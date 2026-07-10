@@ -1,0 +1,10 @@
+title = "SecretShield Custom Rules"
+
+# Extending default gitleaks rules. 
+# You can add custom regex patterns here in the future.
+
+[[rules]]
+id = "custom-test-rule"
+description = "A dummy rule for testing"
+regex = '''(?i)(dummy_secret_[a-z0-9]+)'''
+tags = ["test", "dummy"]

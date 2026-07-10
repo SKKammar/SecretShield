@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker Image
+        run: docker build -t secretshield-action .
+
+      # We can't easily run the action via 'uses: ./' directly on our own test fixtures
+      # inside the same repo without complex setup, so for CI we will manually 
+      # invoke the docker container or use act.
+      - name: Test Clean Repo
+        run: |
+          mkdir -p /tmp/clean
+          cp -r tests/fixtures/clean-repo/* /tmp/clean/ || true
+          docker run --rm -v /tmp/clean:/github/workspace \
+            -e GITHUB_WORKSPACE=/github/workspace \
+            -e GITHUB_EVENT_NAME=push \
+            -e SEVERITY_THRESHOLD=HIGH \
+            secretshield-action || exit 1 # Should pass
+
+      - name: Test Dirty Repo
+        run: |
+          mkdir -p /tmp/dirty
+          cp -r tests/fixtures/dirty-repo/* /tmp/dirty/ || true
+          # The action should fail because there is a secret
+          docker run --rm -v /tmp/dirty:/github/workspace \
+            -e GITHUB_WORKSPACE=/github/workspace \
+            -e GITHUB_EVENT_NAME=push \
+            -e SEVERITY_THRESHOLD=HIGH \
+            -e FAIL_ON_SECRETS=true \
+            secretshield-action && exit 1 || exit 0 # Should fail, so invert exit code

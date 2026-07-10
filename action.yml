@@ -1,0 +1,57 @@
+name: "SecretShield"
+description: "Scans every push and PR for secrets, .env files, and sensitive credentials. Auto-removes on push, blocks merge on PR."
+author: "SKKammar"
+
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  token:
+    description: "GitHub token for PR comments and artifact upload"
+    required: true
+    default: ${{ github.token }}
+
+  auto_remove:
+    description: "Auto-delete sensitive files on direct push"
+    required: false
+    default: "true"
+
+  fail_on_secrets:
+    description: "Fail the job if secrets are found (blocks PR merge)"
+    required: false
+    default: "true"
+
+  custom_patterns:
+    description: "Comma-separated extra regex patterns to scan for"
+    required: false
+    default: ""
+
+  ignore_paths:
+    description: "Comma-separated paths to skip (e.g. tests/,docs/)"
+    required: false
+    default: ""
+
+  severity_threshold:
+    description: "Minimum severity to fail on: LOW, MEDIUM, HIGH, CRITICAL"
+    required: false
+    default: "HIGH"
+
+outputs:
+  secrets_found:
+    description: "true/false — whether any secrets were detected"
+  report_path:
+    description: "Path to the JSON scan report artifact"
+  total_findings:
+    description: "Total number of findings across all rules"
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  env:
+    GITHUB_TOKEN: ${{ inputs.token }}
+    AUTO_REMOVE: ${{ inputs.auto_remove }}
+    FAIL_ON_SECRETS: ${{ inputs.fail_on_secrets }}
+    CUSTOM_PATTERNS: ${{ inputs.custom_patterns }}
+    IGNORE_PATHS: ${{ inputs.ignore_paths }}
+    SEVERITY_THRESHOLD: ${{ inputs.severity_threshold }}

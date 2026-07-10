@@ -1,0 +1,30 @@
+name: Release to Marketplace
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update Floating Major Tag
+        run: |
+          # Extract major version from the tag (e.g. v1.0.0 -> v1)
+          MAJOR_VERSION=$(echo ${GITHUB_REF#refs/tags/} | grep -o 'v[0-9]*' | head -1)
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Delete local and remote floating tag if exists
+          git tag -d $MAJOR_VERSION || true
+          git push origin :refs/tags/$MAJOR_VERSION || true
+          
+          # Create and push new floating tag pointing to current commit
+          git tag $MAJOR_VERSION
+          git push origin $MAJOR_VERSION
