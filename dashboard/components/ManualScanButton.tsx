@@ -1,22 +1,47 @@
 'use client';
 
 import { useState } from 'react';
-import { triggerManualScan } from '@/lib/github';
+import { triggerManualScan, listScanArtifacts } from '@/lib/github';
 
 export function ManualScanButton({ owner, repo }: { owner: string; repo: string }) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'running' | 'success' | 'error'>('idle');
 
   const handleScan = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (status === 'loading') return;
+    if (status === 'loading' || status === 'running') return;
     
     setStatus('loading');
     try {
+      // Get the current latest artifact ID to compare against later
+      const initialArtifacts = await listScanArtifacts(owner, repo, 1, 1).catch(() => null);
+      const initialId = initialArtifacts?.artifacts[0]?.id;
+
       await triggerManualScan(owner, repo);
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 3000);
+      setStatus('running');
+
+      // Poll for the new artifact up to 60 seconds (12 attempts * 5s)
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          const currentArtifacts = await listScanArtifacts(owner, repo, 1, 1);
+          const currentId = currentArtifacts.artifacts[0]?.id;
+          
+          if (currentId && currentId !== initialId) {
+            clearInterval(interval);
+            setStatus('success');
+            setTimeout(() => window.location.reload(), 1000);
+          } else if (attempts >= 12) {
+            clearInterval(interval);
+            setStatus('success'); // Trigger was successful, just taking long
+            setTimeout(() => setStatus('idle'), 3000);
+          }
+        } catch (e) {
+          // Ignore polling errors
+        }
+      }, 5000);
     } catch (err: any) {
       console.error(err);
       setStatus('error');
@@ -35,7 +60,8 @@ export function ManualScanButton({ owner, repo }: { owner: string; repo: string 
     >
       {status === 'idle' && '▸ manual scan'}
       {status === 'loading' && '...'}
-      {status === 'success' && '✓ triggered'}
+      {status === 'running' && '⟳ scanning'}
+      {status === 'success' && '✓ complete'}
       {status === 'error' && '✗ failed'}
     </button>
   );
