@@ -50,6 +50,7 @@ async function githubFetch<T>(
   if (!pat) throw new GitHubAuthError('No GitHub PAT configured.');
 
   const res = await fetch(`${GITHUB_API_BASE}${path}`, {
+    cache: 'no-store',
     ...options,
     headers: {
       Authorization: `Bearer ${pat}`,
@@ -120,10 +121,17 @@ export async function fetchScanReport(
   repo: string,
   artifactId: number,
 ): Promise<ScanReport | null> {
+  const pat = getPat();
+  if (!pat) return null;
+
   // We proxy through our Next.js API route to avoid CORS issues
   try {
     const res = await fetch(
-      `/api/scans?owner=${owner}&repo=${repo}&artifact_id=${artifactId}`
+      `/api/scans?owner=${owner}&repo=${repo}&artifact_id=${artifactId}`,
+      { 
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${pat}` }
+      }
     );
     if (!res.ok) return null;
     const data = await res.json() as ScanReport;
