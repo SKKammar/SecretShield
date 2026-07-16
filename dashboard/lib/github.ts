@@ -132,6 +132,17 @@ export async function fetchScanReport(
   }
 }
 
+// ─── Manual Actions ──────────────────────────────────────────────────────────
+
+export async function triggerManualScan(owner: string, repo: string): Promise<void> {
+  await githubFetch(`/repos/${owner}/${repo}/dispatches`, {
+    method: 'POST',
+    body: JSON.stringify({
+      event_type: 'secretshield-scan'
+    })
+  });
+}
+
 // ─── Trend Data Processing ────────────────────────────────────────────────────
 
 /**

@@ -27,6 +27,8 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  repository_dispatch:
+    types: [secretshield-scan]
 
 permissions:
   contents: write      # required for auto-remove on push
@@ -38,6 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: true
 
       - name: Run SecretShield

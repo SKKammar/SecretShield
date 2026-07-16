@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ScanHistoryTable } from '@/components/ScanHistoryTable';
 import { TrendChart, SeverityPieChart } from '@/components/TrendChart';
+import { ManualScanButton } from '@/components/ManualScanButton';
 import { listScanArtifacts, fetchScanReport, buildTrendData, hasPat } from '@/lib/github';
 import type { GitHubArtifact, ScanReport, TrendPoint } from '@/lib/types';
 import { useParams, useRouter } from 'next/navigation';
@@ -85,7 +86,7 @@ export default function RepoPage() {
       </nav>
 
       {/* Header */}
-      <div className="flex items-end justify-between border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-6">
         <div>
           <h1 className="font-mono text-2xl font-bold tracking-tight text-primary">
             {repo.toUpperCase()}
@@ -94,14 +95,7 @@ export default function RepoPage() {
             SCAN_HISTORY & ANALYSIS
           </p>
         </div>
-        <a
-          href={`https://github.com/${owner}/${repo}/actions`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="terminal-button"
-        >
-          VIEW_ACTIONS ↗
-        </a>
+        <ManualScanButton owner={owner} repo={repo} />
       </div>
 
       {/* Error */}

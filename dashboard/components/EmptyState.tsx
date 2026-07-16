@@ -4,9 +4,22 @@ import { CopyBlock } from './CopyBlock';
 
 export function EmptyState() {
   const codeSnippet = `# .github/workflows/secretshield.yml
-- uses: SKKammar/secretshield@v1
-  with:
-    token: \${{ secrets.GITHUB_TOKEN }}`;
+on:
+  push:
+  pull_request:
+  repository_dispatch:
+    types: [secretshield-scan]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: SKKammar/secretshield@v1
+        with:
+          token: \${{ secrets.GITHUB_TOKEN }}`;
 
   return (
     <div className="text-left mt-8 max-w-lg">

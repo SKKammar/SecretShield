@@ -14,6 +14,7 @@ import {
 import type { GitHubRepo } from '@/lib/types';
 import { TokenGuide } from '@/components/TokenGuide';
 import { EmptyState } from '@/components/EmptyState';
+import { ManualScanButton } from '@/components/ManualScanButton';
 
 export default function OverviewPage() {
   const [pat, setPatState] = useState<string>('');
@@ -286,6 +287,7 @@ function RepoRow({ repo }: { repo: GitHubRepo }) {
       </div>
 
       <div className="mt-2 sm:mt-0 flex items-center gap-6 font-mono text-xs text-muted">
+        <ManualScanButton owner={owner} repo={repoName} />
         {repo.private && (
           <span className="text-orange-500">[PRIVATE]</span>
         )}

@@ -30,7 +30,7 @@ export function TokenGuide() {
           <div className="flex items-start gap-3">
             <span className="text-accent flex-shrink-0">07</span>
             <span className="text-muted leading-tight">
-              Scope: check <span className="border border-border bg-[#111111] text-mono-value px-1 mx-0.5">read:actions</span> only — nothing else needed
+              Scope: check <span className="border border-border bg-[#111111] text-mono-value px-1 mx-0.5">repo</span> (for manual scans) and <span className="border border-border bg-[#111111] text-mono-value px-1 mx-0.5">read:actions</span>
             </span>
           </div>
           <Step num="08" text="Click Generate token" />
@@ -51,7 +51,7 @@ export function TokenGuide() {
           <div className="flex items-start gap-3 mt-6">
             <span className="opacity-0 flex-shrink-0">11</span>
             <a
-              href="https://github.com/settings/tokens/new?scopes=read:actions&description=SecretShield+Dashboard"
+              href="https://github.com/settings/tokens/new?scopes=repo,read:actions&description=SecretShield+Dashboard"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted hover:text-primary hover:underline underline-offset-4 flex items-center gap-1 transition-colors"
