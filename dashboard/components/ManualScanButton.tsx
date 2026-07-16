@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { triggerManualScan, listScanArtifacts } from '@/lib/github';
+import { ScanningModal } from './ScanningModal';
 
 export function ManualScanButton({ owner, repo }: { owner: string; repo: string }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'running' | 'success' | 'error'>('idle');
@@ -53,16 +54,20 @@ export function ManualScanButton({ owner, repo }: { owner: string; repo: string 
   };
 
   return (
-    <button 
-      onClick={handleScan}
-      disabled={status === 'loading'}
-      className="font-mono text-[10px] text-muted hover:text-accent transition-colors uppercase border border-border px-2 py-0.5 bg-[#111111] hover:bg-surface outline-none"
-    >
-      {status === 'idle' && '▸ manual scan'}
-      {status === 'loading' && '...'}
-      {status === 'running' && '⟳ scanning'}
-      {status === 'success' && '✓ complete'}
-      {status === 'error' && '✗ failed'}
-    </button>
+    <>
+      <button 
+        onClick={handleScan}
+        disabled={status === 'loading'}
+        className="font-mono text-[10px] text-muted hover:text-accent transition-colors uppercase border border-border px-2 py-0.5 bg-[#111111] hover:bg-surface outline-none"
+      >
+        {status === 'idle' && '▸ manual scan'}
+        {status === 'loading' && '...'}
+        {status === 'running' && '⟳ scanning'}
+        {status === 'success' && '✓ complete'}
+        {status === 'error' && '✗ failed'}
+      </button>
+
+      {status === 'running' && <ScanningModal repo={repo} />}
+    </>
   );
 }

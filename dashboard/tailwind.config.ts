@@ -22,6 +22,15 @@ export default {
           value: "#a3e635",
         },
       },
+      keyframes: {
+        'scan-beam': {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(100%)' },
+        },
+      },
+      animation: {
+        'scan-beam': 'scan-beam 3s linear infinite',
+      },
       fontFamily: {
         sans: ["var(--font-geist)", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
