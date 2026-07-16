@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run SecretShield (self-scan)
         id: scan
@@ -50,6 +52,12 @@ jobs:
         run: |
           mkdir -p /tmp/clean-test
           cp -r tests/fixtures/clean-repo/. /tmp/clean-test/
+          cd /tmp/clean-test
+          git init
+          git config user.name "Test"
+          git config user.email "test@example.com"
+          git add .
+          git commit -m "init clean repo"
 
           docker run --rm \
             -v /tmp/clean-test:/github/workspace \
@@ -88,6 +96,12 @@ jobs:
         run: |
           mkdir -p /tmp/dirty-test
           cp -r tests/fixtures/dirty-repo/. /tmp/dirty-test/
+          cd /tmp/dirty-test
+          git init
+          git config user.name "Test"
+          git config user.email "test@example.com"
+          git add .
+          git commit -m "init dirty repo"
 
           # Action must FAIL — invert the exit code for this test
           if docker run --rm \
