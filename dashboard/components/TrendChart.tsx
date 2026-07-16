@@ -13,9 +13,20 @@ import {
   PieChart,
   Pie,
   Cell,
-  TooltipProps,
 } from 'recharts';
 import type { TrendPoint, ScanSummary } from '@/lib/types';
+
+// Inline tooltip prop types — avoids recharts v2/v3 TooltipProps import differences
+interface TooltipPayloadItem {
+  name?: string;
+  value?: number | string;
+  color?: string;
+}
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+}
 
 // ─── Trend Line Chart ──────────────────────────────────────────────────────
 
@@ -32,7 +43,7 @@ const LINE_CONFIG = [
   { key: 'low',      color: '#3b82f6', label: 'Low',      strokeWidth: 1.5 },
 ];
 
-function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm">
@@ -126,7 +137,7 @@ const PIE_DATA_CONFIG = [
   { key: 'low',      color: '#3b82f6', label: 'Low'      },
 ] as const;
 
-function PieTooltip({ active, payload }: TooltipProps<number, string>) {
+function PieTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/95 px-3 py-2 shadow-2xl backdrop-blur-sm">

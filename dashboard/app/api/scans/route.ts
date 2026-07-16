@@ -7,14 +7,6 @@ const GITHUB_API_BASE = 'https://api.github.com';
  *
  * Proxies the GitHub Artifacts download through Next.js to avoid CORS issues.
  * The PAT is passed from the client via the Authorization header.
- *
- * GitHub's artifact download URL requires a redirect — we follow it and
- * return the first secretshield-report.json found in the zip archive.
- *
- * NOTE: GitHub artifact downloads return a ZIP file. Since we can't easily
- * decompress a ZIP in a pure edge/serverless function without native modules,
- * we return the artifact metadata and let the client fetch via the direct URL
- * when running in Node.js runtime. This route handles the auth proxy.
  */
 export const runtime = 'nodejs';
 
@@ -37,7 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Step 1: Get artifact metadata to find the download URL
+    // Step 1: Get artifact metadata
     const artifactRes = await fetch(
       `${GITHUB_API_BASE}/repos/${owner}/${repo}/actions/artifacts/${artifactId}`,
       {
@@ -63,7 +55,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Artifact has expired' }, { status: 410 });
     }
 
-    // Step 2: Download the artifact ZIP (GitHub redirects to a signed URL)
+    // Step 2: Download the artifact ZIP
     const zipRes = await fetch(artifact.archive_download_url, {
       headers: {
         Authorization: authHeader,
@@ -80,20 +72,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Step 3: Decompress ZIP and extract secretshield-report.json
-    // We use Node.js built-in zlib and stream APIs
-    const { default: AdmZip } = await import('adm-zip').catch(() => ({ default: null }));
+    // Step 3: Import adm-zip — check for null before using
+    const AdmZipModule = await import('adm-zip').catch(() => null);
 
-    if (!AdmZip) {
-      // Fallback: return metadata only if adm-zip not available
+    if (!AdmZipModule) {
       return NextResponse.json(
-        { error: 'ZIP extraction unavailable — install adm-zip or view artifact directly on GitHub' },
+        { error: 'ZIP extraction unavailable — adm-zip module not found' },
         { status: 501 },
       );
     }
 
+    // AdmZipModule.default is the constructor; TypeScript now knows it is non-null
+    const AdmZip = AdmZipModule.default;
     const buffer = Buffer.from(await zipRes.arrayBuffer());
-    const zip    = new (AdmZip as new (buffer: Buffer) => InstanceType<typeof AdmZip>)(buffer);
+    const zip    = new AdmZip(buffer);
     const entry  = zip.getEntry('secretshield-report.json');
 
     if (!entry) {
