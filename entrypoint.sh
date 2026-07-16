@@ -39,6 +39,12 @@ if [ -n "$IGNORE_PATHS" ]; then
   done
 fi
 
+GITLEAKS_EXTRA_ARGS=""
+if [ ! -d ".git" ]; then
+  echo "⚠️  No .git directory found! Did you forget actions/checkout? Running Gitleaks in --no-git mode..."
+  GITLEAKS_EXTRA_ARGS="--no-git"
+fi
+
 # ─── 1. Run Gitleaks ─────────────────────────────────────────────────────────
 echo "🔍 Running Gitleaks (JSON format)..."
 gitleaks detect \
@@ -49,6 +55,7 @@ gitleaks detect \
   --report-path "$GITLEAKS_REPORT" \
   --exit-code 0 \
   $GITLEAKS_IGNORE_ARGS \
+  $GITLEAKS_EXTRA_ARGS \
   || true
 
 # Run Gitleaks again for SARIF output if enabled
@@ -62,6 +69,7 @@ if [ "${SARIF_UPLOAD:-false}" = "true" ]; then
     --report-path "$REPORT_DIR/gitleaks.sarif" \
     --exit-code 0 \
     $GITLEAKS_IGNORE_ARGS \
+    $GITLEAKS_EXTRA_ARGS \
     || true
   echo "sarif_path=$REPORT_DIR/gitleaks.sarif" >> "${GITHUB_OUTPUT:-/dev/null}"
 fi
