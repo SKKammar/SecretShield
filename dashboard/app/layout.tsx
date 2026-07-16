@@ -5,14 +5,7 @@ import { NavBar } from '@/components/NavBar';
 import { ScanProvider } from '@/components/ScanProvider';
 import './globals.css';
 
-// Using Geist directly if available, falling back to a sans-serif stack
-// (We simulate Geist using standard system-ui as Geist isn't in next/font/google yet,
-// or we can just use a similar clean sans. Actually, we can use Inter as Geist fallback if needed,
-// but the instruction says "use Geist (Vercel's font)". Vercel hosts Geist in next/font/local usually,
-// but for simplicity we'll use a clean sans and JetBrains mono).
-// Wait, Geist is available via next/font/local if we have the files, or next/font/google as "Geist".
-// Let's use `Geist` from next/font/google if it exists, otherwise standard sans.
-// According to Next.js 15, Geist is available in next/font/google.
+
 import { Geist } from 'next/font/google';
 
 const geist = Geist({
