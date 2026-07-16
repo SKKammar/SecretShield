@@ -12,6 +12,7 @@ import {
   GitHubAuthError,
 } from '@/lib/github';
 import type { GitHubRepo } from '@/lib/types';
+import { TokenGuide } from '@/components/TokenGuide';
 
 export default function OverviewPage() {
   const [pat, setPatState] = useState<string>('');
@@ -254,6 +255,8 @@ function AuthScreen({
         <p className="font-mono text-[11px] text-muted lowercase">
           stored in localStorage · never leaves your browser
         </p>
+
+        <TokenGuide />
       </div>
     </div>
   );
