@@ -2,7 +2,7 @@
  * SecretShield Dashboard — GitHub API Client
  *
  * Reads scan reports via GitHub Artifacts REST API.
- * Auth: GitHub PAT with read:actions scope stored in localStorage.
+ * Auth: GitHub PAT with `repo` and `workflow` scopes stored in localStorage.
  * No backend, no database — purely client-side API calls.
  */
 
