@@ -64,6 +64,7 @@ async function githubFetch<T>(
   if (res.status === 404) throw new GitHubNotFoundError(`Resource not found: ${path}`);
   if (!res.ok) throw new GitHubApiError(`GitHub API error ${res.status}: ${res.statusText}`, res.status);
 
+  if (res.status === 204) return {} as T;
   return res.json() as Promise<T>;
 }
 
