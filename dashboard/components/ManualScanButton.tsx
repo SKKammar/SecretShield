@@ -5,8 +5,8 @@ import { useScan } from './ScanProvider';
 export function ManualScanButton({ owner, repo }: { owner: string; repo: string }) {
   const { startScan, status, owner: activeOwner, repo: activeRepo } = useScan();
 
-  const isActiveForThisRepo = (status === 'running' || status === 'loading') && activeOwner === owner && activeRepo === repo;
-  const isRunningGlobally = status === 'running' || status === 'loading';
+  const isActiveForThisRepo = status === 'running' && activeOwner === owner && activeRepo === repo;
+  const isRunningGlobally = status === 'running';
 
   const handleScan = async (e: React.MouseEvent) => {
     e.preventDefault();
