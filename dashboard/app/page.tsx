@@ -13,6 +13,7 @@ import {
 } from '@/lib/github';
 import type { GitHubRepo } from '@/lib/types';
 import { TokenGuide } from '@/components/TokenGuide';
+import { EmptyState } from '@/components/EmptyState';
 
 export default function OverviewPage() {
   const [pat, setPatState] = useState<string>('');
@@ -177,7 +178,7 @@ export default function OverviewPage() {
           ))}
         </div>
       ) : repos.length === 0 ? (
-        <EmptyRepoState />
+        <EmptyState />
       ) : (
         <div className="flex flex-col border-y border-border">
           {repos.map((repo) => (
@@ -298,21 +299,4 @@ function RepoRow({ repo }: { repo: GitHubRepo }) {
   );
 }
 
-// ─── Empty State ────────────────────────────────────────────────────────────
 
-function EmptyRepoState() {
-  return (
-    <div className="terminal-panel text-center py-16 border-border border">
-      <p className="font-mono text-sm font-bold text-accent mb-2">NO_REPOSITORIES_FOUND</p>
-      <p className="font-mono text-xs text-muted mb-6">
-        Search for a specific repository or ensure your PAT has access.
-      </p>
-      <div className="inline-block text-left border border-border bg-[#0a0a0a] p-4 font-mono text-xs">
-        <p className="text-muted mb-2"># ADD SECRETSHIELD TO GITHUB ACTIONS:</p>
-        <pre className="text-mono-value">{`uses: SKKammar/secretshield@v1
-with:
-  token: \${{ secrets.GITHUB_TOKEN }}`}</pre>
-      </div>
-    </div>
-  );
-}

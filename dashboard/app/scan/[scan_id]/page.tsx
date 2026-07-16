@@ -36,15 +36,21 @@ export default function ScanDetailPage() {
       });
   }, [owner, repo, artifactId, router]);
 
-  const handleDownload = () => {
-    if (!report) return;
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `secretshield-${report.scan_id.slice(0, 8)}.json`;
+  function downloadReport(data: object, scanId: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `secretshield-${scanId}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  const handleDownload = () => {
+    if (!report) return;
+    downloadReport(report, report.scan_id);
   };
 
   const filteredFindings: Finding[] = (report?.findings ?? [])
@@ -112,8 +118,11 @@ export default function ScanDetailPage() {
                 })}
               </p>
             </div>
-            <button onClick={handleDownload} className="terminal-button">
-              [↓] DOWNLOAD_JSON
+            <button
+              onClick={handleDownload}
+              className="font-mono text-xs text-muted hover:underline underline-offset-4 outline-none"
+            >
+              ↓ download report.json
             </button>
           </div>
 

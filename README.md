@@ -8,7 +8,8 @@
 [![GitHub Marketplace](https://img.shields.io/badge/GitHub-Marketplace-brightgreen?logo=github)](https://github.com/marketplace/actions/secretshield)
 [![Gitleaks](https://img.shields.io/badge/Powered%20by-Gitleaks%20v8.18.2-red)](https://github.com/gitleaks/gitleaks)
 [![Last Scan](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml/badge.svg)](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml)
-[![Security Policy](https://img.shields.io/badge/Security-Policy-orange)](SECURITY.md)
+[![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
+[![Security Policy](https://img.shields.io/badge/security-policy-red)](SECURITY.md)
 
 </div>
 
@@ -79,6 +80,7 @@ jobs:
 | `fail_on_secrets` | ❌ | `"true"` | Fail the job if secrets at or above `severity_threshold` are found |
 | `custom_patterns` | ❌ | `""` | Comma-separated extra regex patterns to scan file contents for |
 | `ignore_paths` | ❌ | `""` | Comma-separated paths to skip entirely (e.g. `tests/,docs/`) |
+| `sarif_upload` | ❌ | `"false"` | Upload findings to GitHub Code Scanning Alerts |
 | `severity_threshold` | ❌ | `"HIGH"` | Minimum severity to trigger failure: `LOW` \| `MEDIUM` \| `HIGH` \| `CRITICAL` |
 
 ---
@@ -107,6 +109,8 @@ jobs:
 ---
 
 ## ⚙️ How It Works
+
+> **Dogfooding:** SecretShield scans its own repository on every push and PR.
 
 ```mermaid
 flowchart TD

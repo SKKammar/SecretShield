@@ -18,6 +18,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run SecretShield (self-scan)
+        id: scan
+        uses: SKKammar/secretshield@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          severity_threshold: "HIGH"
+          auto_remove: "false"
+          fail_on_secrets: "true"
+          ignore_paths: "tests/fixtures/dirty-repo/,.env.example"
+          sarif_upload: "true"
+
+      - name: Upload scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: secretshield-report
+          path: secretshield-report.json
+
+      - name: Upload SARIF to Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: secretshield-report.sarif
+        continue-on-error: true
+
       - name: Build Docker image
         run: docker build -t secretshield-action:ci .
 

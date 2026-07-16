@@ -28,9 +28,14 @@ inputs:
     default: ""
 
   ignore_paths:
-    description: "Comma-separated paths to skip (e.g. tests/,docs/)"
+    description: "Comma-separated list of paths to ignore (e.g., 'tests/,*.md')"
     required: false
     default: ""
+
+  sarif_upload:
+    description: "Upload findings to GitHub Code Scanning Alerts tab"
+    required: false
+    default: "false"
 
   severity_threshold:
     description: "Minimum severity to fail on: LOW, MEDIUM, HIGH, CRITICAL"

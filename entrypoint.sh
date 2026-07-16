@@ -40,7 +40,7 @@ if [ -n "$IGNORE_PATHS" ]; then
 fi
 
 # ─── 1. Run Gitleaks ─────────────────────────────────────────────────────────
-echo "🔍 Running Gitleaks v8.18.2..."
+echo "🔍 Running Gitleaks (JSON format)..."
 gitleaks detect \
   --source . \
   --config /action/.gitleaks.toml \
@@ -50,6 +50,21 @@ gitleaks detect \
   --exit-code 0 \
   $GITLEAKS_IGNORE_ARGS \
   || true
+
+# Run Gitleaks again for SARIF output if enabled
+if [ "${SARIF_UPLOAD:-false}" = "true" ]; then
+  echo "📄 Generating SARIF report..."
+  gitleaks detect \
+    --source . \
+    --config /action/.gitleaks.toml \
+    --redact \
+    --report-format sarif \
+    --report-path "$REPORT_DIR/gitleaks.sarif" \
+    --exit-code 0 \
+    $GITLEAKS_IGNORE_ARGS \
+    || true
+  echo "sarif_path=$REPORT_DIR/gitleaks.sarif" >> "${GITHUB_OUTPUT:-/dev/null}"
+fi
 
 # Ensure file exists even if empty
 [ -f "$GITLEAKS_REPORT" ] || echo "[]" > "$GITLEAKS_REPORT"
