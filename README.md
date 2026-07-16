@@ -64,10 +64,11 @@ jobs:
 - 🔴 **Blocks PR merges** by posting a detailed comment with findings and 4-step fix guide
 - 🗑️ **Auto-removes** sensitive files on direct push, updates `.gitignore`, commits with ⚠️ warning
 - 📊 **Generates a structured JSON report** uploaded as a named workflow artifact
+- 🛡️ **Native GitHub Code Scanning** support via SARIF upload (`sarif_upload: true`)
 - 🎛️ **Configurable severity threshold** — fail only on CRITICAL, HIGH, MEDIUM, or any finding
 - 🔒 **Redacts secrets** — the `match` field logs only the first 4 characters + `****`
 - 🧩 **Extensible** via `custom_patterns` (regex) and `ignore_paths`
-- 📈 **Dashboard** — visualize scan history across all repos ([see below](#-dashboard))
+- 📈 **Terminal Dashboard** — visualize scan history across all repos ([see below](#-dashboard))
 
 ---
 
@@ -150,19 +151,18 @@ flowchart TD
 
 ## 📈 Dashboard
 
-Visualize scan history across all your repositories with the companion Next.js 15 dashboard.
+Visualize scan history across all your repositories with the companion Next.js 15 **Terminal Security Console** dashboard.
 
 > **No backend, no database** — reads directly from the GitHub Artifacts REST API using your Personal Access Token (`read:actions` scope).
 
 **Features:**
-- 📋 Overview page with repository search
-- 📉 30-day findings trend chart (Recharts LineChart)
-- 🥧 Severity breakdown pie chart
-- 🔎 Single scan detail view with raw JSON download
+- 📋 **Terminal aesthetic:** Monospace fonts, strict layout, and zero fluff
+- 📉 **30-day findings trend chart:** Jagged data visualizations
+- 🥧 **Severity breakdowns & raw readouts**
+- 🔎 **Single scan detail view** with local `report.json` Blob downloads
+- 🔐 **Secure PAT onboarding:** Inline guides, credentials never leave your browser
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SKKammar/secretshield/tree/main/dashboard)
-
-> 📸 _Dashboard screenshot — deploy to see it live_
 
 ---
 
