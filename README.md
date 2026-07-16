@@ -8,6 +8,7 @@
 [![GitHub Marketplace](https://img.shields.io/badge/GitHub-Marketplace-brightgreen?logo=github)](https://github.com/marketplace/actions/secretshield)
 [![Gitleaks](https://img.shields.io/badge/Powered%20by-Gitleaks%20v8.18.2-red)](https://github.com/gitleaks/gitleaks)
 [![Last Scan](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml/badge.svg)](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-orange)](SECURITY.md)
 
 </div>
 
@@ -201,6 +202,8 @@ Extend SecretShield's detection with your own regex patterns via the `custom_pat
 
 When SecretShield's `auto_remove` feature removes a file and commits the deletion, the secret still exists in all previous commits. Anyone with repository access can still check out an older commit and read the file.
 
+> **`auto_remove` scope**: Only **whole sensitive files** detected by the file-pattern scanner (`.env`, `.pem`, `service-account.json`, etc.) are auto-deleted. Secrets embedded inside regular source files (e.g. a hardcoded API key in `config.js`) are **flagged but never auto-deleted** — removing a source file would break your codebase. You must edit the file to remove the secret value.
+
 **After any secret detection, you MUST:**
 
 1. **Rotate credentials immediately** — assume the secret is compromised.
@@ -230,7 +233,9 @@ Please read [CHANGELOG.md](CHANGELOG.md) for the project history.
 
 ## 📄 License
 
-[MIT License](LICENSE) — Copyright © 2024 [SKKammar](https://github.com/SKKammar)
+[MIT License](LICENSE) — Copyright © 2026 [SKKammar](https://github.com/SKKammar)
+
+Please see [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
 
 ---
 

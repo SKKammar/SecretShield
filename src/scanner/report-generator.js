@@ -68,11 +68,18 @@ function redactMatch(rawMatch) {
 /**
  * Parse Gitleaks v8 JSON output (array of finding objects).
  * Returns normalized findings array.
+ *
+ * IMPORTANT: Gitleaks detects secrets EMBEDDED INSIDE source files (e.g. a hardcoded
+ * AWS key in config.js). These files are NOT added to `removableFiles` because
+ * auto-deleting a source file would break the codebase. Users must remediate these
+ * manually by removing the secret value, then rotating credentials.
+ *
+ * Only the file-pattern scanner (whole sensitive files like .env, .pem) populates
+ * `removableFiles` for auto-removal.
  */
 function processGitleaksData(data) {
   if (!Array.isArray(data)) return [];
   const findings    = [];
-  const filesSet    = new Set();
   const severityMap = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
 
   for (const item of data) {
@@ -102,13 +109,13 @@ function processGitleaksData(data) {
     };
 
     findings.push(finding);
-    if (filePath) filesSet.add(filePath);
+    // NOTE: gitleaks files are NOT added to removableFiles — see function docstring above.
 
     if (severity in severityMap) severityMap[severity]++;
     else severityMap['HIGH']++;
   }
 
-  return { findings, filesSet, severityMap };
+  return { findings, severityMap };
 }
 
 /**
@@ -164,6 +171,11 @@ function readJsonFile(filePath, fallback) {
 
 /**
  * Main entry point — merge Gitleaks + file-scanner output into unified report.
+ *
+ * `files_removed` contains ONLY files flagged by the file-pattern scanner
+ * (whole sensitive files: .env, .pem, service-account.json, etc.).
+ * Gitleaks findings are NEVER auto-removed — the user must edit the file to
+ * remove the embedded secret, then rotate the exposed credential.
  */
 function generateReport(gitleaksPath, fileScannerPath, outputPath) {
   const gitleaksData    = readJsonFile(gitleaksPath, []);
@@ -173,7 +185,10 @@ function generateReport(gitleaksPath, fileScannerPath, outputPath) {
   const fsc = processFileScannerData(fileScannerData);
 
   const allFindings = [...gl.findings, ...fsc.findings];
-  const allFiles    = new Set([...gl.filesSet, ...fsc.filesSet]);
+
+  // Only file-scanner files are candidates for auto-removal.
+  // Gitleaks findings (hardcoded secrets inside source files) must be fixed manually.
+  const removableFiles = Array.from(fsc.filesSet);
 
   // Merge severity counts
   const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
@@ -196,7 +211,8 @@ function generateReport(gitleaksPath, fileScannerPath, outputPath) {
       high:           counts.HIGH,
       medium:         counts.MEDIUM,
       low:            counts.LOW,
-      files_removed:  Array.from(allFiles),
+      // Only whole sensitive files (file-scanner hits) — NOT gitleaks source-file findings
+      files_removed:  removableFiles,
     },
     findings: allFindings,
   };
@@ -205,6 +221,7 @@ function generateReport(gitleaksPath, fileScannerPath, outputPath) {
   fs.writeFileSync(outputPath, JSON.stringify(report, null, 2), 'utf8');
 
   console.log(`[SecretShield] Report written to ${outputPath}`);
+  console.log(`[SecretShield] Removable files (file-scanner): ${removableFiles.length}`);
   console.log(`[SecretShield] Total findings: ${allFindings.length} (CRITICAL: ${counts.CRITICAL}, HIGH: ${counts.HIGH}, MEDIUM: ${counts.MEDIUM}, LOW: ${counts.LOW})`);
 }
 
