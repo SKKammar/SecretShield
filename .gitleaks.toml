@@ -19,6 +19,8 @@ paths = [
   '''docs/''',
   '''README\.md''',
   '''CHANGELOG\.md''',
+  # Example / template files — contain placeholder values only, never real secrets
+  '''\.env\.example''',
   # Build / dependency artifacts
   '''\.next/''',
   '''dist/''',
