@@ -1,4 +1,38 @@
-name: "SecretShield"
+Run npm run build
+
+> secretshield-dashboard@1.0.0 build
+> next build
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.9s
+  Running TypeScript ...
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/dev/types/**/*.ts'
+
+  The following mandatory changes were made to your tsconfig.json:
+
+  	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+
+Failed to type check.
+
+./components/ManualScanButton.tsx:8:56
+Type error: This comparison appears to be unintentional because the types '"error" | "idle" | "success"' and '"loading"' have no overlap.
+
+   6 | ...artScan, status, owner: activeOwner, repo: activeRepo } = useScan();
+   7 | ...
+>  8 | ...tiveForThisRepo = (status === 'running' || status === 'loading') && activeOwner === own...
+     |                                               ^
+   9 | ...nningGlobally = status === 'running' || status === 'loading';
+  10 | ...
+  11 | ...leScan = async (e: React.MouseEvent) => {
+Next.js build worker exited with code: 1 and signal: null
+Error: Process completed with exit code 1.name: "SecretShield"
 description: "Scans every push and PR for secrets, .env files, and sensitive credentials. Auto-removes on push, blocks merge on PR."
 author: "SKKammar"
 
