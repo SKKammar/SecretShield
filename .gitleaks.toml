@@ -1,0 +1,138 @@
+title = "SecretShield Gitleaks Configuration"
+
+# Use all default Gitleaks rules as the baseline
+[extend]
+useDefault = true
+
+# ─────────────────────────────────────────────────────────────────
+# ALLOWLIST — paths / values that are known-safe and must not alert
+# ─────────────────────────────────────────────────────────────────
+[allowlist]
+description = "Global allowlist for test fixtures, build artifacts, and placeholder values"
+paths = [
+  # Test directories
+  '''tests/''',
+  '''__tests__/''',
+  '''mocks/''',
+  '''fixtures/''',
+  # Documentation
+  '''docs/''',
+  '''README\.md''',
+  '''CHANGELOG\.md''',
+  # Build / dependency artifacts
+  '''\.next/''',
+  '''dist/''',
+  '''build/''',
+  '''node_modules/''',
+  # This config file itself
+  '''\.gitleaks\.toml''',
+]
+regexes = [
+  # Placeholder / example values
+  '''your[_-]?api[_-]?key[_-]?here''',
+  '''<YOUR[_-]?API[_-]?KEY>''',
+  '''REPLACE[_-]?WITH''',
+  '''sk-xxxx''',
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''example\.com''',
+  '''localhost''',
+  # CI/CD placeholder patterns
+  '''\$\{\{.*\}\}''',
+]
+
+# ─────────────────────────────────────────────────────────────────
+# CUSTOM RULES
+# ─────────────────────────────────────────────────────────────────
+
+# 1. Supabase service_role JWT — CRITICAL
+[[rules]]
+id          = "supabase-service-role-key"
+description = "Supabase service_role JWT key detected"
+regex       = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9+/=_-]{20,}\.[A-Za-z0-9+/=_-]{20,}'''
+tags        = ["supabase", "jwt", "secret"]
+severity    = "CRITICAL"
+
+  [rules.allowlist]
+  regexes = [
+    '''your[_-]?supabase[_-]?key''',
+    '''<SUPABASE''',
+  ]
+
+# 2. Supabase project URL — MEDIUM
+[[rules]]
+id          = "supabase-url"
+description = "Supabase project URL detected"
+regex       = '''https://[a-z0-9]{20,}\.supabase\.co'''
+tags        = ["supabase", "url"]
+severity    = "MEDIUM"
+
+  [rules.allowlist]
+  regexes = [
+    '''your[_-]?project''',
+    '''example''',
+  ]
+
+# 3. Generic API key assignment — HIGH
+[[rules]]
+id          = "generic-api-key-assignment"
+description = "Generic API key assignment detected"
+regex       = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*["']?[A-Za-z0-9\-_]{16,}["']?'''
+tags        = ["api-key", "generic"]
+severity    = "HIGH"
+
+  [rules.allowlist]
+  regexes = [
+    '''your[_-]?api[_-]?key''',
+    '''REPLACE''',
+    '''<.*>''',
+    '''xxxx''',
+    '''\$\{''',
+  ]
+
+# 4. Generic password assignment — HIGH
+[[rules]]
+id          = "generic-password-assignment"
+description = "Generic password assignment detected"
+regex       = '''(?i)(password|passwd|pwd)\s*[:=]\s*["'][^"'${}]{8,}["']'''
+tags        = ["password", "generic"]
+severity    = "HIGH"
+
+  [rules.allowlist]
+  regexes = [
+    '''your[_-]?password''',
+    '''REPLACE''',
+    '''<.*>''',
+    '''\*+''',
+    '''\$\{''',
+  ]
+
+# 5. Database connection string — CRITICAL
+[[rules]]
+id          = "database-connection-string"
+description = "Database connection string with embedded credentials"
+regex       = '''(postgres|postgresql|mysql|mongodb|redis):\/\/[^:]+:[^@]{4,}@[a-zA-Z0-9._-]+'''
+tags        = ["database", "credentials"]
+severity    = "CRITICAL"
+
+  [rules.allowlist]
+  regexes = [
+    '''localhost''',
+    '''127\.0\.0\.1''',
+    '''your[_-]?password''',
+    '''<.*>''',
+    '''\$\{''',
+  ]
+
+# 6. PEM private key header — CRITICAL
+[[rules]]
+id          = "private-key-header"
+description = "PEM private key header detected"
+regex       = '''-----BEGIN [A-Z ]+ PRIVATE KEY-----'''
+tags        = ["private-key", "pem"]
+severity    = "CRITICAL"
+
+  [rules.allowlist]
+  regexes = [
+    '''EXAMPLE''',
+    '''PLACEHOLDER''',
+  ]

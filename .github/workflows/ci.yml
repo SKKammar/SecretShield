@@ -1,4 +1,4 @@
-name: CI
+name: CI — Test SecretShield Action
 
 on:
   push:
@@ -6,36 +6,146 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  test-action:
+    name: Build & Test Docker Action
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build Docker Image
-        run: docker build -t secretshield-action .
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # We can't easily run the action via 'uses: ./' directly on our own test fixtures
-      # inside the same repo without complex setup, so for CI we will manually 
-      # invoke the docker container or use act.
-      - name: Test Clean Repo
+      - name: Build Docker image
+        run: docker build -t secretshield-action:ci .
+
+      # ─── Test 1: Clean repo — must exit 0 ──────────────────────────────────
+      - name: "Test: Clean repo (expect exit 0)"
         run: |
-          mkdir -p /tmp/clean
-          cp -r tests/fixtures/clean-repo/* /tmp/clean/ || true
-          docker run --rm -v /tmp/clean:/github/workspace \
+          mkdir -p /tmp/clean-test
+          cp -r tests/fixtures/clean-repo/. /tmp/clean-test/
+
+          docker run --rm \
+            -v /tmp/clean-test:/github/workspace \
             -e GITHUB_WORKSPACE=/github/workspace \
             -e GITHUB_EVENT_NAME=push \
-            -e SEVERITY_THRESHOLD=HIGH \
-            secretshield-action || exit 1 # Should pass
-
-      - name: Test Dirty Repo
-        run: |
-          mkdir -p /tmp/dirty
-          cp -r tests/fixtures/dirty-repo/* /tmp/dirty/ || true
-          # The action should fail because there is a secret
-          docker run --rm -v /tmp/dirty:/github/workspace \
-            -e GITHUB_WORKSPACE=/github/workspace \
-            -e GITHUB_EVENT_NAME=push \
-            -e SEVERITY_THRESHOLD=HIGH \
+            -e GITHUB_REPOSITORY=test/clean-repo \
+            -e GITHUB_SHA=abc123def456 \
+            -e GITHUB_REF_NAME=main \
+            -e AUTO_REMOVE=false \
             -e FAIL_ON_SECRETS=true \
-            secretshield-action && exit 1 || exit 0 # Should fail, so invert exit code
+            -e SEVERITY_THRESHOLD=HIGH \
+            -e CUSTOM_PATTERNS= \
+            -e IGNORE_PATHS= \
+            secretshield-action:ci
+
+          echo "✅ Clean repo test passed (exit 0)"
+
+      # ─── Validate clean-repo report schema ─────────────────────────────────
+      - name: "Validate: Clean repo JSON schema"
+        run: |
+          REPORT=/tmp/clean-test/secretshield-report.json
+          if [ ! -f "$REPORT" ]; then
+            echo "❌ Report not generated for clean repo"
+            exit 1
+          fi
+          node -e "
+            const r = require('$REPORT');
+            const required = ['scan_id','timestamp','repo','commit','branch','triggered_by','summary','findings'];
+            const missing = required.filter(k => !(k in r));
+            if (missing.length > 0) { console.error('Missing fields:', missing); process.exit(1); }
+            console.log('✅ Schema valid. total_findings:', r.summary.total_findings);
+          "
+
+      # ─── Test 2: Dirty repo — must exit 1 ─────────────────────────────────
+      - name: "Test: Dirty repo (expect exit 1)"
+        run: |
+          mkdir -p /tmp/dirty-test
+          cp -r tests/fixtures/dirty-repo/. /tmp/dirty-test/
+
+          # Action must FAIL — invert the exit code for this test
+          if docker run --rm \
+            -v /tmp/dirty-test:/github/workspace \
+            -e GITHUB_WORKSPACE=/github/workspace \
+            -e GITHUB_EVENT_NAME=push \
+            -e GITHUB_REPOSITORY=test/dirty-repo \
+            -e GITHUB_SHA=def456abc123 \
+            -e GITHUB_REF_NAME=main \
+            -e AUTO_REMOVE=false \
+            -e FAIL_ON_SECRETS=true \
+            -e SEVERITY_THRESHOLD=HIGH \
+            -e CUSTOM_PATTERNS= \
+            -e IGNORE_PATHS= \
+            secretshield-action:ci; then
+            echo "❌ Dirty repo test FAILED — scanner should have returned exit 1"
+            exit 1
+          else
+            echo "✅ Dirty repo test passed (correctly exited 1)"
+          fi
+
+      # ─── Validate dirty-repo report schema ─────────────────────────────────
+      - name: "Validate: Dirty repo JSON schema + findings"
+        run: |
+          REPORT=/tmp/dirty-test/secretshield-report.json
+          if [ ! -f "$REPORT" ]; then
+            echo "❌ Report not generated for dirty repo"
+            exit 1
+          fi
+          node -e "
+            const r = require('$REPORT');
+            // Schema check
+            const required = ['scan_id','timestamp','repo','commit','branch','triggered_by','summary','findings'];
+            const missing = required.filter(k => !(k in r));
+            if (missing.length > 0) { console.error('Missing fields:', missing); process.exit(1); }
+            // Findings check
+            if (r.summary.total_findings === 0) {
+              console.error('❌ Expected findings in dirty repo, got 0');
+              process.exit(1);
+            }
+            // Redaction check — no finding should have a match longer than 9 chars without ****
+            for (const f of r.findings) {
+              if (f.match && !f.match.includes('****') && f.match.length > 8 && !f.match.startsWith('File:')) {
+                console.error('❌ Unredacted match found in finding:', f.id);
+                process.exit(1);
+              }
+            }
+            console.log('✅ Schema valid. total_findings:', r.summary.total_findings);
+            console.log('   CRITICAL:', r.summary.critical, '| HIGH:', r.summary.high, '| MEDIUM:', r.summary.medium, '| LOW:', r.summary.low);
+          "
+
+      # ─── Upload test report as artifact ────────────────────────────────────
+      - name: Upload dirty-repo scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secretshield-report-ci-${{ github.run_id }}
+          path: /tmp/dirty-test/secretshield-report.json
+          if-no-files-found: warn
+
+  # ─── Dashboard build check ─────────────────────────────────────────────────
+  dashboard-build:
+    name: Dashboard — Next.js Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Build dashboard
+        run: npm run build
+        working-directory: dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

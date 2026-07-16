@@ -1,76 +1,241 @@
-## SecretShield 🔐
+<div align="center">
 
-Scans every push and PR for secrets, `.env` files, and sensitive credentials. Auto-removes on push, blocks merge on PR.
+# 🛡️ SecretShield
 
-### Quick Start
+### Automated secret and sensitive-file detection for every push and PR
 
-Create a workflow file in your repository (e.g., `.github/workflows/secretshield.yml`):
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub Marketplace](https://img.shields.io/badge/GitHub-Marketplace-brightgreen?logo=github)](https://github.com/marketplace/actions/secretshield)
+[![Gitleaks](https://img.shields.io/badge/Powered%20by-Gitleaks%20v8.18.2-red)](https://github.com/gitleaks/gitleaks)
+[![Last Scan](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml/badge.svg)](https://github.com/SKKammar/secretshield/actions/workflows/ci.yml)
+
+</div>
+
+---
+
+## ⚡ Quick Start
+
+Add this to `.github/workflows/secretshield.yml` in **any** repository and you're protected in under 5 minutes:
 
 ```yaml
 name: SecretShield Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+
+permissions:
+  contents: write      # required for auto-remove on push
+  pull-requests: write # required to post PR comments
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          persist-credentials: true
+
       - name: Run SecretShield
-        uses: SKKammar/SecretShield@v1
+        uses: SKKammar/secretshield@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           severity_threshold: "HIGH"
           auto_remove: "true"
           fail_on_secrets: "true"
+
+      - name: Upload scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: secretshield-report
+          path: secretshield-report.json
 ```
 
-### Inputs
+---
 
-| Input | Description | Default |
-|-------|-------------|---------|
-| `token` | GitHub token for PR comments and artifact upload | `${{ github.token }}` |
-| `auto_remove` | Auto-delete sensitive files on direct push | `"true"` |
-| `fail_on_secrets` | Fail the job if secrets are found (blocks PR merge) | `"true"` |
-| `custom_patterns` | Comma-separated extra regex patterns to scan for | `""` |
-| `ignore_paths` | Comma-separated paths to skip (e.g. tests/,docs/) | `""` |
-| `severity_threshold` | Minimum severity to fail on: LOW, MEDIUM, HIGH, CRITICAL | `"HIGH"` |
+## 🔍 What It Does
 
-### Outputs
+- 🔐 **Detects secrets** using [Gitleaks v8.18.2](https://github.com/gitleaks/gitleaks) (pinned) with 100+ built-in rules
+- 📁 **Scans sensitive file patterns**: `.env`, `.pem`, `.key`, `service-account.json`, `firebase-adminsdk*.json`, and [11 more](#sensitive-file-patterns)
+- 🔴 **Blocks PR merges** by posting a detailed comment with findings and 4-step fix guide
+- 🗑️ **Auto-removes** sensitive files on direct push, updates `.gitignore`, commits with ⚠️ warning
+- 📊 **Generates a structured JSON report** uploaded as a named workflow artifact
+- 🎛️ **Configurable severity threshold** — fail only on CRITICAL, HIGH, MEDIUM, or any finding
+- 🔒 **Redacts secrets** — the `match` field logs only the first 4 characters + `****`
+- 🧩 **Extensible** via `custom_patterns` (regex) and `ignore_paths`
+- 📈 **Dashboard** — visualize scan history across all repos ([see below](#-dashboard))
+
+---
+
+## 📥 Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `token` | ✅ | `${{ github.token }}` | GitHub token for PR comments and artifact upload |
+| `auto_remove` | ❌ | `"true"` | Auto-delete sensitive files on direct push and commit |
+| `fail_on_secrets` | ❌ | `"true"` | Fail the job if secrets at or above `severity_threshold` are found |
+| `custom_patterns` | ❌ | `""` | Comma-separated extra regex patterns to scan file contents for |
+| `ignore_paths` | ❌ | `""` | Comma-separated paths to skip entirely (e.g. `tests/,docs/`) |
+| `severity_threshold` | ❌ | `"HIGH"` | Minimum severity to trigger failure: `LOW` \| `MEDIUM` \| `HIGH` \| `CRITICAL` |
+
+---
+
+## 📤 Outputs
 
 | Output | Description |
 |--------|-------------|
-| `secrets_found` | `true/false` — whether any secrets were detected |
-| `report_path` | Path to the JSON scan report artifact |
-| `total_findings` | Total number of findings across all rules |
+| `secrets_found` | `"true"` or `"false"` — whether any secrets were detected |
+| `total_findings` | Total number of findings across all rules and scanners |
+| `report_path` | Absolute path to the generated JSON scan report |
 
-### How It Works
+**Using outputs in subsequent steps:**
 
-SecretShield utilizes Gitleaks under the hood, wrapped in a Docker container alongside a custom file pattern scanner. 
-- On **Push**: It can automatically delete matching files and push a remediation commit.
-- On **Pull Request**: It will post a comment summarizing findings and fail the CI build to block the merge if the threshold is met.
+```yaml
+- name: Run SecretShield
+  id: scan
+  uses: SKKammar/secretshield@v1
 
-### Dashboard
+- name: Check results
+  run: |
+    echo "Secrets found: ${{ steps.scan.outputs.secrets_found }}"
+    echo "Total findings: ${{ steps.scan.outputs.total_findings }}"
+```
 
-A companion Next.js Dashboard is available to visualize your scan history across repositories! It fetches workflow artifacts directly from the GitHub API.
+---
 
-### Severity Levels
+## ⚙️ How It Works
 
-- **CRITICAL**: Private keys, high-value tokens.
-- **HIGH**: Generic API tokens, `.env` files.
-- **MEDIUM**: Suspicious endpoints or non-critical credentials.
-- **LOW**: Informational findings.
+```mermaid
+flowchart TD
+    A([🚀 Workflow Triggered\npush / pull_request]) --> B
 
-### Custom Patterns
+    B[📥 Checkout repository\nactions/checkout@v4] --> C
 
-You can pass a comma-separated list of regex patterns via the `custom_patterns` input to extend the built-in rules.
+    C[🐳 SecretShield Docker container starts\nUbuntu 22.04 + Node 20 + Gitleaks v8.18.2] --> D
 
-### FAQ
+    D --> D1[🔍 Gitleaks scan\n100+ built-in rules\n+ 6 custom rules]
+    D --> D2[📁 File-pattern scanner\n14 sensitive file patterns\n+ custom_patterns]
 
-**Why did my PR build fail?**
-SecretShield found credentials! Check the PR comment or the workflow artifact for details.
+    D1 --> E
+    D2 --> E
+
+    E[📊 report-generator.js\nMerges results → secretshield-report.json\nRedacts match field\nApplies severity mapping] --> F
+
+    F{Secrets\nfound?}
+
+    F -- No --> G([✅ Exit 0 — Repository is clean])
+
+    F -- Yes --> H{Event type?}
+
+    H -- push --> I[🗑️ auto_remove=true?\ngit rm files\nUpdate .gitignore\n⚠️ Commit + push]
+    H -- pull_request --> J[💬 Post PR comment\nFindings table\n4-step How to Fix]
+
+    I --> K{fail_on_secrets\n+ severity_threshold\nmet?}
+    J --> K
+
+    K -- No --> L([✅ Exit 0])
+    K -- Yes --> M([❌ Exit 1 — Build fails])
+
+    E --> N[📤 Upload artifact\nsecretshield-report\nGITHUB_STEP_SUMMARY]
+```
+
+---
+
+## 📈 Dashboard
+
+Visualize scan history across all your repositories with the companion Next.js 15 dashboard.
+
+> **No backend, no database** — reads directly from the GitHub Artifacts REST API using your Personal Access Token (`read:actions` scope).
+
+**Features:**
+- 📋 Overview page with repository search
+- 📉 30-day findings trend chart (Recharts LineChart)
+- 🥧 Severity breakdown pie chart
+- 🔎 Single scan detail view with raw JSON download
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SKKammar/secretshield/tree/main/dashboard)
+
+> 📸 _Dashboard screenshot — deploy to see it live_
+
+---
+
+## 🎯 Severity Levels
+
+| Severity | Badge | Examples | Action Taken |
+|----------|-------|----------|-------------|
+| **CRITICAL** | 🔴 | Private keys (`-----BEGIN * PRIVATE KEY-----`), database connection strings with credentials, Supabase service_role keys, `service-account.json` | Always fails build when `fail_on_secrets=true` |
+| **HIGH** | 🟠 | Generic API key assignments, password assignments, `.env` files, Firebase admin keys | Fails build when `severity_threshold=HIGH` (default) |
+| **MEDIUM** | 🟡 | Supabase project URLs, suspicious endpoints | Fails build when `severity_threshold=MEDIUM` |
+| **LOW** | 🔵 | Informational findings | Fails build when `severity_threshold=LOW` |
+
+### Sensitive File Patterns
+
+These file types are detected regardless of content:
+
+`.env` · `.env.*` · `.pem` · `.key` · `.p12` · `.pfx` · `id_rsa*` · `id_dsa*` · `id_ecdsa*` · `id_ed25519*` · `secrets.json` · `secrets.yaml` · `secrets.yml` · `credentials.json` · `service-account.json` · `firebase-adminsdk*.json` · `google-credentials.json`
+
+---
+
+## 🧩 Custom Patterns
+
+Extend SecretShield's detection with your own regex patterns via the `custom_patterns` input:
+
+```yaml
+- uses: SKKammar/secretshield@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    custom_patterns: "MYAPP_SECRET=[A-Za-z0-9]{32},internal_token_[a-z]+"
+    ignore_paths: "tests/,scripts/seed.sh"
+```
+
+- **`custom_patterns`**: Comma-separated list of regex patterns scanned against file *contents*
+- **`ignore_paths`**: Comma-separated list of path prefixes to skip entirely
+
+---
+
+## ⚠️ Important — Read Before Using
+
+> **Deleting a file does NOT remove it from git history.**
+
+When SecretShield's `auto_remove` feature removes a file and commits the deletion, the secret still exists in all previous commits. Anyone with repository access can still check out an older commit and read the file.
+
+**After any secret detection, you MUST:**
+
+1. **Rotate credentials immediately** — assume the secret is compromised.
+2. **Purge git history** using [`git-filter-repo`](https://github.com/newren/git-filter-repo):
+   ```bash
+   pip install git-filter-repo
+   git filter-repo --path path/to/secret-file --invert-paths
+   git push --force-with-lease origin main
+   ```
+3. **Notify your security team** if the repo is or was ever public.
+4. **Audit access logs** for the exposed service.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Make your changes and add tests in `tests/fixtures/`
+4. Submit a pull request — SecretShield will scan your PR automatically 🛡️
+
+Please read [CHANGELOG.md](CHANGELOG.md) for the project history.
+
+---
+
+## 📄 License
+
+[MIT License](LICENSE) — Copyright © 2024 [SKKammar](https://github.com/SKKammar)
+
+---
+
+<div align="center">
+
+Made with ❤️ by [SKKammar](https://github.com/SKKammar) · [Report a Bug](https://github.com/SKKammar/secretshield/issues) · [Request a Feature](https://github.com/SKKammar/secretshield/issues)
+
+</div>

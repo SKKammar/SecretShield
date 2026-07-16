@@ -1,30 +1,86 @@
-name: Release to Marketplace
+name: Release to GitHub Marketplace
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
 
 jobs:
   release:
+    name: Create Release & Update Floating Tag
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Update Floating Major Tag
+      # ─── Extract version info ───────────────────────────────────────────────
+      - name: Extract version
+        id: version
         run: |
-          # Extract major version from the tag (e.g. v1.0.0 -> v1)
-          MAJOR_VERSION=$(echo ${GITHUB_REF#refs/tags/} | grep -o 'v[0-9]*' | head -1)
-          
-          git config user.name "github-actions[bot]"
+          TAG="${GITHUB_REF#refs/tags/}"
+          MAJOR=$(echo "$TAG" | grep -oP 'v\d+' | head -1)
+          echo "tag=$TAG"         >> $GITHUB_OUTPUT
+          echo "major=$MAJOR"     >> $GITHUB_OUTPUT
+          echo "📦 Releasing $TAG (floating: $MAJOR)"
+
+      # ─── Extract changelog for this version ────────────────────────────────
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          # Extract the section between this version and the next heading
+          NOTES=$(awk "/^## \[${TAG#v}\]/,/^## \[/" CHANGELOG.md \
+                  | grep -v "^## \[" | sed 's/^###/##/g' | head -60)
+          if [ -z "$NOTES" ]; then
+            NOTES="See [CHANGELOG.md](CHANGELOG.md) for details."
+          fi
+          # Write to file to avoid shell escaping issues
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "Release notes extracted."
+
+      # ─── Create GitHub Release ─────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const tag = '${{ steps.version.outputs.tag }}';
+            const notes = fs.readFileSync('/tmp/release-notes.md', 'utf8');
+
+            const { data: release } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              tag_name:   tag,
+              name:       `SecretShield ${tag}`,
+              body:       notes,
+              draft:      false,
+              prerelease: false,
+            });
+
+            console.log(`✅ Release created: ${release.html_url}`);
+
+      # ─── Update floating major tag (e.g. v1 → current commit) ─────────────
+      - name: Update floating major tag
+        run: |
+          MAJOR="${{ steps.version.outputs.major }}"
+          TAG="${{ steps.version.outputs.tag }}"
+
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Delete local and remote floating tag if exists
-          git tag -d $MAJOR_VERSION || true
-          git push origin :refs/tags/$MAJOR_VERSION || true
-          
-          # Create and push new floating tag pointing to current commit
-          git tag $MAJOR_VERSION
-          git push origin $MAJOR_VERSION
+
+          # Delete existing floating tag locally and remotely
+          git tag -d "$MAJOR" 2>/dev/null || true
+          git push origin ":refs/tags/$MAJOR" 2>/dev/null || true
+
+          # Create new floating tag pointing to this commit
+          git tag "$MAJOR"
+          git push origin "$MAJOR"
+
+          echo "✅ Floating tag $MAJOR now points to $TAG"
