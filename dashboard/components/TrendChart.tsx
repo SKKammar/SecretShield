@@ -1,72 +1,20 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import type { TrendPoint, ScanSummary } from '@/lib/types';
-
-// Inline tooltip prop types — avoids recharts v2/v3 TooltipProps import differences
-interface TooltipPayloadItem {
-  name?: string;
-  value?: number | string;
-  color?: string;
-}
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: TooltipPayloadItem[];
-  label?: string;
-}
-
-// ─── Trend Line Chart ──────────────────────────────────────────────────────
 
 interface TrendChartProps {
   data: TrendPoint[];
   className?: string;
 }
 
-const LINE_CONFIG = [
-  { key: 'total',    color: '#a5bbfd', label: 'Total',    strokeWidth: 2 },
-  { key: 'critical', color: '#ef4444', label: 'Critical', strokeWidth: 1.5 },
-  { key: 'high',     color: '#f97316', label: 'High',     strokeWidth: 1.5 },
-  { key: 'medium',   color: '#eab308', label: 'Medium',   strokeWidth: 1.5 },
-  { key: 'low',      color: '#3b82f6', label: 'Low',      strokeWidth: 1.5 },
-];
-
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-white/10 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm">
-      <p className="mb-2 text-xs font-semibold text-slate-400">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-2 text-xs">
-          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="capitalize text-slate-300">{entry.name}:</span>
-          <span className="font-bold text-white">{entry.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function TrendChart({ data, className }: TrendChartProps) {
-  // Format dates for display
   const formattedData = useMemo(
-    () =>
-      data.map((d) => ({
-        ...d,
-        displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      })),
+    () => data.map((d) => ({
+      ...d,
+      displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    })),
     [data],
   );
 
@@ -74,11 +22,8 @@ export function TrendChart({ data, className }: TrendChartProps) {
 
   if (!hasData) {
     return (
-      <div className={`flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-8 ${className ?? ''}`}>
-        <div className="text-center">
-          <div className="mb-2 text-3xl">📊</div>
-          <p className="text-sm text-slate-400">No scan data in the last 30 days</p>
-        </div>
+      <div className={`terminal-panel flex h-[260px] items-center justify-center ${className ?? ''}`}>
+        <p className="font-mono text-sm text-muted">NO SCAN DATA [30 DAYS]</p>
       </div>
     );
   }
@@ -86,111 +31,67 @@ export function TrendChart({ data, className }: TrendChartProps) {
   return (
     <div className={className}>
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={formattedData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-          <XAxis
-            dataKey="displayDate"
-            tick={{ fill: '#94a3b8', fontSize: 11 }}
+        <LineChart data={formattedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="2 2" stroke="#1f1f1f" vertical={false} />
+          <XAxis 
+            dataKey="displayDate" 
+            tick={{ fill: '#6b7280', fontSize: 10, fontFamily: 'monospace' }}
             tickLine={false}
-            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+            axisLine={false}
             interval="preserveStartEnd"
           />
-          <YAxis
-            tick={{ fill: '#94a3b8', fontSize: 11 }}
+          <YAxis 
+            tick={{ fill: '#6b7280', fontSize: 10, fontFamily: 'monospace' }}
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: '12px', color: '#94a3b8', paddingTop: '12px' }}
+          <Line
+            type="stepAfter"
+            dataKey="total"
+            stroke="#ef4444"
+            strokeWidth={1}
+            dot={false}
+            activeDot={{ r: 3, fill: '#ef4444', stroke: '#0a0a0a', strokeWidth: 1 }}
           />
-          {LINE_CONFIG.map(({ key, color, label, strokeWidth }) => (
-            <Line
-              key={key}
-              type="monotone"
-              dataKey={key}
-              name={label}
-              stroke={color}
-              strokeWidth={strokeWidth}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
-            />
-          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-// ─── Severity Pie Chart ────────────────────────────────────────────────────
-
 interface SeverityPieChartProps {
   summary: ScanSummary;
   className?: string;
 }
 
-const PIE_DATA_CONFIG = [
-  { key: 'critical', color: '#ef4444', label: 'Critical' },
-  { key: 'high',     color: '#f97316', label: 'High'     },
-  { key: 'medium',   color: '#eab308', label: 'Medium'   },
-  { key: 'low',      color: '#3b82f6', label: 'Low'      },
-] as const;
-
-function PieTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-white/10 bg-slate-900/95 px-3 py-2 shadow-2xl backdrop-blur-sm">
-      <p className="text-xs font-semibold text-slate-300">
-        {payload[0].name}: <span className="text-white">{payload[0].value}</span>
-      </p>
-    </div>
-  );
-}
-
+// Replaces the pie chart with a terminal-style plain text readout
 export function SeverityPieChart({ summary, className }: SeverityPieChartProps) {
-  const pieData = PIE_DATA_CONFIG
-    .map(({ key, color, label }) => ({
-      name:  label,
-      value: summary[key],
-      color,
-    }))
-    .filter((d) => d.value > 0);
-
-  if (pieData.length === 0) {
-    return (
-      <div className={`flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-8 ${className ?? ''}`}>
-        <div className="text-center">
-          <div className="mb-2 text-3xl">✅</div>
-          <p className="text-sm text-slate-400">No findings</p>
-        </div>
-      </div>
-    );
-  }
+  const totals = [
+    { label: 'CRITICAL', value: summary.critical, color: 'text-accent' },
+    { label: 'HIGH',     value: summary.high,     color: 'text-orange-500' },
+    { label: 'MEDIUM',   value: summary.medium,   color: 'text-yellow-500' },
+    { label: 'LOW',      value: summary.low,      color: 'text-blue-500' },
+  ];
 
   return (
-    <div className={className}>
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={90}
-            paddingAngle={3}
-            dataKey="value"
-          >
-            {pieData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />
-            ))}
-          </Pie>
-          <Tooltip content={<PieTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className={`terminal-panel flex flex-col justify-center gap-4 h-[260px] ${className ?? ''}`}>
+      <div className="space-y-3">
+        {totals.map((t) => (
+          <div key={t.label} className="flex items-center justify-between font-mono text-sm">
+            <span className="text-muted">[{t.label}]</span>
+            <span className={`tabular-nums font-bold ${t.value > 0 ? t.color : 'text-muted'}`}>
+              {t.value.toString().padStart(4, '0')}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 border-t border-border pt-4 flex items-center justify-between font-mono text-sm">
+        <span className="text-primary">TOTAL_FINDINGS</span>
+        <span className="tabular-nums font-bold text-primary">
+          {summary.total_findings.toString().padStart(4, '0')}
+        </span>
+      </div>
     </div>
   );
 }

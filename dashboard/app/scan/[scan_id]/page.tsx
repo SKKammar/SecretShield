@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { SeverityBadge, severityWeight } from '@/components/SeverityBadge';
 import { fetchScanReport, hasPat } from '@/lib/github';
 import type { ScanReport, Finding } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -53,54 +52,46 @@ export default function ScanDetailPage() {
     .sort((a, b) => severityWeight(a.severity) - severityWeight(b.severity));
 
   return (
-    <div className="animate-fade-in space-y-8">
+    <div className="space-y-10">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/" className="hover:text-slate-300 transition-colors">Overview</Link>
-        <span>/</span>
+      <nav className="font-mono text-xs text-muted uppercase tracking-widest">
+        <Link href="/" className="hover:text-primary transition-colors">OVERVIEW</Link>
+        <span className="mx-2">›</span>
         {owner && repo && (
           <>
-            <Link href={`/repo/${owner}/${repo}`} className="hover:text-slate-300 transition-colors">
-              {owner}/{repo}
+            <Link href={`/repo/${owner}/${repo}`} className="hover:text-primary transition-colors">
+              {owner} / {repo}
             </Link>
-            <span>/</span>
+            <span className="mx-2">›</span>
           </>
         )}
-        <span className="font-mono text-slate-400">{params.scan_id.slice(0, 8)}…</span>
+        <span className="text-primary">{params.scan_id.slice(0, 8)}</span>
       </nav>
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex items-center justify-center py-24">
-          <div className="text-center">
-            <div className="mb-4 text-4xl animate-spin-slow">🛡️</div>
-            <p className="text-sm text-slate-400">Loading scan report…</p>
-          </div>
+        <div className="flex items-center py-24 font-mono text-sm text-accent">
+          [ SYSTEM ] Fetching scan report artifact...
         </div>
       )}
 
       {/* Error */}
       {!isLoading && error && (
-        <div className="glass-card flex flex-col items-center justify-center py-20 text-center">
-          <div className="mb-4 text-5xl">❌</div>
-          <h3 className="mb-2 text-lg font-semibold text-white">Failed to load report</h3>
-          <p className="mb-4 text-sm text-slate-400">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary"
-          >
-            Retry
+        <div className="terminal-panel text-center py-16 border-accent">
+          <p className="font-mono text-sm font-bold text-accent mb-2">FAILED_TO_LOAD_REPORT</p>
+          <p className="font-mono text-xs text-muted mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="terminal-button">
+            RETRY_FETCH
           </button>
         </div>
       )}
 
       {/* Not found */}
       {!isLoading && !error && !report && (
-        <div className="glass-card flex flex-col items-center justify-center py-20 text-center">
-          <div className="mb-4 text-5xl">🔍</div>
-          <h3 className="mb-2 text-lg font-semibold text-white">Report not found</h3>
-          <p className="text-sm text-slate-400">
-            This artifact may have expired or the report file was not generated.
+        <div className="terminal-panel text-center py-16">
+          <p className="font-mono text-sm font-bold text-muted mb-2">REPORT_NOT_FOUND</p>
+          <p className="font-mono text-xs text-muted">
+            Artifact may have expired or report was not generated.
           </p>
         </div>
       )}
@@ -109,54 +100,43 @@ export default function ScanDetailPage() {
       {!isLoading && report && (
         <>
           {/* Header */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">
-                Scan Report —{' '}
-                <span className="gradient-text font-mono">{report.scan_id.slice(0, 8)}</span>
+              <h1 className="font-mono text-2xl font-bold tracking-tight text-primary">
+                SCAN_REPORT <span className="text-muted ml-2">[{report.scan_id.slice(0, 8)}]</span>
               </h1>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-2 font-mono text-xs text-muted tracking-widest tabular-nums uppercase">
                 {new Date(report.timestamp).toLocaleString('en-US', {
                   weekday: 'short', month: 'short', day: 'numeric',
-                  year: 'numeric', hour: '2-digit', minute: '2-digit',
+                  year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
                 })}
               </p>
             </div>
-            <button
-              id="download-json-btn"
-              onClick={handleDownload}
-              className="flex items-center gap-2 rounded-xl border border-shield-500/30 bg-shield-600/20 px-4 py-2 text-sm font-medium text-shield-300 transition-all hover:bg-shield-600/30"
-            >
-              ⬇️ Download JSON
+            <button onClick={handleDownload} className="terminal-button">
+              [↓] DOWNLOAD_JSON
             </button>
           </div>
 
-          {/* Meta cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <MetaCard label="Repository"  value={report.repo} mono />
-            <MetaCard label="Branch"      value={report.branch} mono />
-            <MetaCard label="Commit"      value={report.commit.slice(0, 8)} mono />
-            <MetaCard label="Triggered by" value={report.triggered_by} />
-          </div>
-
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-            <SummaryCard label="Total" value={report.summary.total_findings} color="text-white" highlight={report.summary.total_findings > 0} />
-            <SummaryCard label="Critical" value={report.summary.critical} color="text-red-400" />
-            <SummaryCard label="High"     value={report.summary.high}     color="text-orange-400" />
-            <SummaryCard label="Medium"   value={report.summary.medium}   color="text-yellow-400" />
-            <SummaryCard label="Low"      value={report.summary.low}      color="text-blue-400" />
+          {/* Meta + Summary Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-border border border-border">
+            <MetaCard label="REPO"    value={report.repo} />
+            <MetaCard label="BRANCH"  value={report.branch} />
+            <MetaCard label="COMMIT"  value={report.commit.slice(0, 7)} />
+            <MetaCard label="TRIGGER" value={report.triggered_by} />
+            <StatCard label="TOTAL"   value={report.summary.total_findings} highlight={report.summary.total_findings > 0} />
           </div>
 
           {/* Files removed */}
           {report.summary.files_removed.length > 0 && (
-            <div className="glass-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-300">🗑️ Files Flagged / Removed</h3>
-              <div className="flex flex-wrap gap-2">
+            <div>
+              <h3 className="mb-2 font-mono text-xs font-bold text-accent uppercase tracking-widest">
+                ▸ FILES_REMOVED (FILE-PATTERN SCANNER)
+              </h3>
+              <div className="terminal-panel bg-[#1a0f0f] border-accent/30 space-y-1">
                 {report.summary.files_removed.map((f) => (
-                  <span key={f} className="rounded-md bg-red-500/10 px-2 py-1 font-mono text-xs text-red-300 border border-red-500/20">
-                    {f}
-                  </span>
+                  <div key={f} className="font-mono text-xs text-accent">
+                    - {f}
+                  </div>
                 ))}
               </div>
             </div>
@@ -164,20 +144,20 @@ export default function ScanDetailPage() {
 
           {/* Findings */}
           <div>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-white">
-                Findings <span className="ml-2 text-sm text-slate-500">({filteredFindings.length})</span>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-2">
+              <h2 className="font-mono text-sm font-bold text-primary uppercase tracking-widest">
+                ▸ FINDINGS <span className="text-muted ml-1">[{filteredFindings.length}]</span>
               </h2>
               {/* Severity filter */}
-              <div className="flex gap-2">
+              <div className="flex gap-4">
                 {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((s) => (
                   <button
                     key={s}
                     onClick={() => setFilter(s)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    className={`font-mono text-[11px] tracking-widest transition-colors ${
                       filter === s
-                        ? 'bg-shield-600/40 text-shield-300'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                        ? 'text-primary underline underline-offset-4'
+                        : 'text-muted hover:text-primary'
                     }`}
                   >
                     {s}
@@ -187,16 +167,15 @@ export default function ScanDetailPage() {
             </div>
 
             {filteredFindings.length === 0 ? (
-              <div className="glass-card flex flex-col items-center justify-center py-16 text-center">
-                <div className="mb-3 text-4xl">✅</div>
-                <p className="text-sm text-slate-400">
-                  {report.findings.length === 0 ? 'No findings — repository is clean!' : `No findings match the "${filter}" filter.`}
+              <div className="terminal-panel py-12 text-center">
+                <p className="font-mono text-xs text-muted uppercase">
+                  {report.findings.length === 0 ? '[CLEAN] NO FINDINGS DETECTED' : `NO FINDINGS MATCH FILTER: [${filter}]`}
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-px bg-border border border-border">
                 {filteredFindings.map((finding, idx) => (
-                  <FindingCard key={`${finding.id}-${idx}`} finding={finding} />
+                  <FindingRow key={`${finding.id}-${idx}`} finding={finding} />
                 ))}
               </div>
             )}
@@ -207,58 +186,74 @@ export default function ScanDetailPage() {
   );
 }
 
-function MetaCard({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function MetaCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="glass-card px-4 py-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-0.5 truncate text-sm font-medium text-slate-200 ${mono ? 'font-mono' : ''}`}>
+    <div className="bg-background p-4 flex flex-col justify-between h-full">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{label}</p>
+      <p className="mt-2 font-mono text-sm text-primary truncate" title={value}>
         {value}
       </p>
     </div>
   );
 }
 
-function SummaryCard({
-  label, value, color, highlight,
-}: { label: string; value: number; color: string; highlight?: boolean }) {
+function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className={`stat-card ${highlight && value > 0 ? 'border-red-500/20' : ''}`}>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
+    <div className={`p-4 flex flex-col justify-between h-full ${highlight ? 'bg-[#1a0f0f]' : 'bg-background'}`}>
+      <p className={`font-mono text-[10px] uppercase tracking-widest ${highlight ? 'text-accent' : 'text-muted'}`}>{label}</p>
+      <p className={`mt-2 font-mono text-2xl font-bold tabular-nums ${highlight ? 'text-accent' : 'text-primary'}`}>
+        {value.toString().padStart(4, '0')}
+      </p>
     </div>
   );
 }
 
-function FindingCard({ finding }: { finding: Finding }) {
-  return (
-    <div className="glass-card p-4 transition-all hover:border-white/20">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <SeverityBadge severity={finding.severity} />
-          <span className="font-mono text-xs text-slate-400 bg-white/5 rounded-md px-2 py-0.5">
-            {finding.source}
-          </span>
-        </div>
-        <span className="text-xs text-slate-500">Line {finding.line}</span>
-      </div>
+function FindingRow({ finding }: { finding: Finding }) {
+  const colorMap: Record<string, string> = {
+    CRITICAL: 'text-accent',
+    HIGH: 'text-orange-500',
+    MEDIUM: 'text-yellow-500',
+    LOW: 'text-blue-500',
+  };
+  const color = colorMap[finding.severity] || 'text-muted';
 
-      <div className="space-y-1.5">
-        <div className="flex flex-wrap gap-1.5 text-xs">
-          <span className="text-slate-500">File:</span>
-          <code className="rounded bg-white/5 px-1.5 py-0.5 text-slate-300 break-all">{finding.file}</code>
+  return (
+    <div className="bg-background p-4 hover:bg-surface transition-colors flex flex-col sm:flex-row sm:items-start gap-4">
+      <div className="w-32 flex-shrink-0">
+        <span className={`font-mono text-xs font-bold ${color}`}>
+          [{finding.severity}]
+        </span>
+      </div>
+      
+      <div className="flex-1 space-y-1.5 font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-primary break-all">{finding.file}</span>
+          <span className="text-muted">·</span>
+          <span className="text-muted">line {finding.line.toString().padStart(3, '0')}</span>
+          <span className="text-muted">·</span>
+          <span className="text-muted">[{finding.source}]</span>
         </div>
-        <div className="flex flex-wrap gap-1.5 text-xs">
-          <span className="text-slate-500">Rule:</span>
-          <span className="text-slate-300">{finding.rule}</span>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted w-12">RULE:</span>
+          <span className="text-primary">{finding.rule}</span>
         </div>
-        <div className="flex flex-wrap gap-1.5 text-xs">
-          <span className="text-slate-500">Match:</span>
-          <code className="rounded bg-red-500/10 px-1.5 py-0.5 font-mono text-red-300 border border-red-500/20">
-            {finding.match}
-          </code>
-          <span className="text-xs text-slate-600">(redacted)</span>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted w-12">MATCH:</span>
+          <span className="text-mono-value px-1 bg-[#1a2e05]">{finding.match}</span>
         </div>
       </div>
     </div>
   );
+}
+
+function severityWeight(severity: string) {
+  switch (severity?.toUpperCase()) {
+    case 'CRITICAL': return 0;
+    case 'HIGH': return 1;
+    case 'MEDIUM': return 2;
+    case 'LOW': return 3;
+    default: return 99;
+  }
 }

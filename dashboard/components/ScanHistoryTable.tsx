@@ -18,10 +18,10 @@ interface ScanHistoryTableProps {
 
 function SkeletonRow() {
   return (
-    <tr className="border-b border-white/5">
+    <tr className="border-b border-border bg-surface">
       {[1, 2, 3, 4, 5, 6].map((i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-4 animate-pulse rounded-md bg-white/10" />
+          <div className="h-4 w-16 animate-pulse bg-[#1f1f1f]" />
         </td>
       ))}
     </tr>
@@ -31,14 +31,10 @@ function SkeletonRow() {
 export function ScanHistoryTable({ rows, owner, repo, isLoading }: ScanHistoryTableProps) {
   if (isLoading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <TableHeader />
-          </thead>
-          <tbody>
-            {Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
-          </tbody>
+      <div className="w-full overflow-x-auto border border-border">
+        <table className="w-full text-left font-sans text-sm">
+          <thead><TableHeader /></thead>
+          <tbody>{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</tbody>
         </table>
       </div>
     );
@@ -46,53 +42,40 @@ export function ScanHistoryTable({ rows, owner, repo, isLoading }: ScanHistoryTa
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-white/5 py-16 backdrop-blur-sm">
-        <div className="mb-4 text-5xl">🔍</div>
-        <h3 className="mb-2 text-lg font-semibold text-white">No scans found</h3>
-        <p className="max-w-sm text-center text-sm text-slate-400">
-          SecretShield hasn&apos;t run on this repository yet, or no{' '}
-          <code className="rounded bg-white/10 px-1 text-xs text-slate-300">secretshield-report</code>{' '}
-          artifacts were found.
-        </p>
-        <p className="mt-4 text-xs text-slate-500">
-          Add SecretShield to your workflow to start scanning.
-        </p>
+      <div className="terminal-panel text-center py-12">
+        <p className="font-mono text-sm text-muted">NO SCANS FOUND FOR REPOSITORY</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <TableHeader />
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {rows.map(({ artifact, report }) => (
-              <ScanTableRow
-                key={artifact.id}
-                artifact={artifact}
-                report={report}
-                owner={owner}
-                repo={repo}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="w-full overflow-x-auto border border-border">
+      <table className="w-full text-left font-sans text-sm">
+        <thead>
+          <TableHeader />
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map(({ artifact, report }, idx) => (
+            <ScanTableRow
+              key={artifact.id}
+              artifact={artifact}
+              report={report}
+              owner={owner}
+              repo={repo}
+              even={idx % 2 === 0}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function TableHeader() {
   return (
-    <tr className="border-b border-white/10 bg-white/5">
-      {['Date', 'Branch', 'Commit', 'Findings', 'Severity Breakdown', 'Details'].map((h) => (
-        <th
-          key={h}
-          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400"
-        >
+    <tr className="border-b border-border bg-[#0a0a0a]">
+      {['DATE', 'BRANCH', 'COMMIT', 'FINDINGS', 'SEVERITY', 'ID'].map((h) => (
+        <th key={h} className="px-4 py-3 font-mono text-[11px] font-normal tracking-widest text-muted">
           {h}
         </th>
       ))}
@@ -100,94 +83,54 @@ function TableHeader() {
   );
 }
 
-function ScanTableRow({
-  artifact,
-  report,
-  owner,
-  repo,
-}: {
-  artifact: GitHubArtifact;
-  report: ScanReport | null;
-  owner: string;
-  repo: string;
-}) {
-  const date       = new Date(artifact.created_at);
-  const dateStr    = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const timeStr    = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const branch     = report?.branch ?? artifact.workflow_run?.head_branch ?? '—';
-  const commitSha  = report?.commit ?? artifact.workflow_run?.head_sha ?? '—';
-  const total      = report?.summary.total_findings ?? 0;
-  const scanId     = report?.scan_id ?? String(artifact.id);
+function ScanTableRow({ artifact, report, owner, repo, even }: { artifact: GitHubArtifact; report: ScanReport | null; owner: string; repo: string; even: boolean }) {
+  const date = new Date(artifact.created_at);
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+  const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const branch = report?.branch ?? artifact.workflow_run?.head_branch ?? '—';
+  const commitSha = report?.commit ?? artifact.workflow_run?.head_sha ?? '—';
+  const total = report?.summary.total_findings ?? 0;
+  const scanId = report?.scan_id ?? String(artifact.id);
   const hasFindings = total > 0;
 
   return (
-    <tr className="group transition-colors hover:bg-white/5">
-      {/* Date */}
-      <td className="whitespace-nowrap px-4 py-3">
-        <div className="text-slate-200">{dateStr}</div>
-        <div className="text-xs text-slate-500">{timeStr}</div>
+    <tr className={`${even ? 'bg-background' : 'bg-surface'} transition-colors hover:bg-[#1a1a1a]`}>
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-primary">
+        {dateStr} {timeStr}
       </td>
-
-      {/* Branch */}
-      <td className="px-4 py-3">
-        <span className="inline-block max-w-[120px] truncate rounded-md bg-white/10 px-2 py-0.5 font-mono text-xs text-slate-300">
-          {branch}
-        </span>
+      <td className="px-4 py-3 font-mono text-xs text-muted">
+        {branch}
       </td>
-
-      {/* Commit */}
-      <td className="px-4 py-3">
-        <span className="font-mono text-xs text-slate-400">
-          {commitSha !== '—' ? commitSha.slice(0, 8) : '—'}
-        </span>
+      <td className="px-4 py-3 font-mono text-xs text-mono-value">
+        {commitSha !== '—' ? commitSha.slice(0, 7) : '—'}
       </td>
-
-      {/* Total findings */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 font-mono text-xs tabular-nums">
         {report ? (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-              hasFindings
-                ? 'bg-red-500/20 text-red-300'
-                : 'bg-green-500/20 text-green-300'
-            }`}
-          >
-            {hasFindings ? `🚨 ${total}` : '✅ 0'}
+          <span className={hasFindings ? 'text-accent' : 'text-accent-secondary'}>
+            {total.toString().padStart(3, '0')}
           </span>
         ) : (
-          <span className="text-xs text-slate-500">Loading…</span>
+          <span className="text-muted">...</span>
         )}
       </td>
-
-      {/* Severity breakdown */}
       <td className="px-4 py-3">
         {report && hasFindings ? (
-          <div className="flex flex-wrap gap-1">
-            {report.summary.critical > 0 && (
-              <SeverityBadge severity="CRITICAL" size="sm" showIcon={false} />
-            )}
-            {report.summary.high > 0 && (
-              <SeverityBadge severity="HIGH" size="sm" showIcon={false} />
-            )}
-            {report.summary.medium > 0 && (
-              <SeverityBadge severity="MEDIUM" size="sm" showIcon={false} />
-            )}
-            {report.summary.low > 0 && (
-              <SeverityBadge severity="LOW" size="sm" showIcon={false} />
-            )}
+          <div className="flex flex-wrap gap-2">
+            {report.summary.critical > 0 && <SeverityBadge severity="CRITICAL" />}
+            {report.summary.high > 0 && <SeverityBadge severity="HIGH" />}
+            {report.summary.medium > 0 && <SeverityBadge severity="MEDIUM" />}
+            {report.summary.low > 0 && <SeverityBadge severity="LOW" />}
           </div>
         ) : (
-          <span className="text-xs text-slate-500">—</span>
+          <span className="font-mono text-xs text-muted">CLEAN</span>
         )}
       </td>
-
-      {/* Details link */}
       <td className="px-4 py-3">
         <Link
           href={`/scan/${scanId}?owner=${owner}&repo=${repo}&artifact_id=${artifact.id}`}
-          className="inline-flex items-center gap-1 rounded-lg bg-shield-600/30 px-3 py-1.5 text-xs font-medium text-shield-300 transition-all hover:bg-shield-600/50 hover:text-shield-200"
+          className="font-mono text-xs text-muted hover:text-primary hover:underline underline-offset-4"
         >
-          View →
+          {String(artifact.id)}
         </Link>
       </td>
     </tr>

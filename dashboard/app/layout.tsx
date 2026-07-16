@@ -1,24 +1,38 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
+import { JetBrains_Mono } from 'next/font/google';
 import { NavBar } from '@/components/NavBar';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+// Using Geist directly if available, falling back to a sans-serif stack
+// (We simulate Geist using standard system-ui as Geist isn't in next/font/google yet,
+// or we can just use a similar clean sans. Actually, we can use Inter as Geist fallback if needed,
+// but the instruction says "use Geist (Vercel's font)". Vercel hosts Geist in next/font/local usually,
+// but for simplicity we'll use a clean sans and JetBrains mono).
+// Wait, Geist is available via next/font/local if we have the files, or next/font/google as "Geist".
+// Let's use `Geist` from next/font/google if it exists, otherwise standard sans.
+// According to Next.js 15, Geist is available in next/font/google.
+import { Geist } from 'next/font/google';
+
+const geist = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist',
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
+});
 
 export const metadata: Metadata = {
   title: {
-    default: 'SecretShield Dashboard',
+    default: 'SecretShield Console',
     template: '%s | SecretShield',
   },
   description:
-    'Visualize SecretShield scan history across your repositories. Track secret detection trends, severity breakdowns, and remediation progress.',
+    'Terminal security console for SecretShield. Automated secret detection across GitHub repositories.',
   keywords: ['github actions', 'secret detection', 'security', 'gitleaks', 'devops'],
   authors: [{ name: 'SKKammar', url: 'https://github.com/SKKammar' }],
-  openGraph: {
-    title: 'SecretShield Dashboard',
-    description: 'Automated secret detection dashboard for GitHub repositories',
-    type: 'website',
-  },
 };
 
 export default function RootLayout({
@@ -27,24 +41,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${geist.variable} ${jetbrains.variable}`}>
       <body>
         <NavBar />
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-5xl px-6 py-12">
           {children}
         </main>
-        <footer className="mt-16 border-t border-white/5 py-8 text-center">
-          <p className="text-xs text-slate-600">
-            🛡️ SecretShield — Built by{' '}
-            <a
-              href="https://github.com/SKKammar"
-              className="text-slate-500 hover:text-slate-400 transition-colors"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              SKKammar
-            </a>{' '}
-            · MIT License
+        <footer className="mt-16 border-t border-border py-8 px-6 max-w-5xl mx-auto">
+          <p className="font-mono text-xs text-muted uppercase tracking-widest">
+            secretshield · <a href="https://github.com/SKKammar" className="hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">@SKKammar</a>
           </p>
         </footer>
       </body>

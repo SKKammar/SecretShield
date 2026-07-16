@@ -69,99 +69,104 @@ export default function RepoPage() {
   useEffect(() => { loadScans(page); }, [page, loadScans]);
 
   return (
-    <div className="animate-fade-in space-y-8">
+    <div className="space-y-10">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/" className="hover:text-slate-300 transition-colors">Overview</Link>
-        <span>/</span>
+      <nav className="font-mono text-xs text-muted uppercase tracking-widest">
+        <Link href="/" className="hover:text-primary transition-colors">OVERVIEW</Link>
+        <span className="mx-2">›</span>
         <a
           href={`https://github.com/${owner}/${repo}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-slate-300 hover:text-white transition-colors"
+          className="text-primary hover:underline underline-offset-4"
         >
-          {owner}/{repo}
+          {owner} / {repo}
         </a>
       </nav>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between border-b border-border pb-6">
         <div>
-          <h1 className="text-3xl font-bold">
-            <span className="gradient-text">{repo}</span>
+          <h1 className="font-mono text-2xl font-bold tracking-tight text-primary">
+            {repo.toUpperCase()}
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            {owner} · Scan history &amp; analysis
+          <p className="mt-2 font-mono text-xs text-muted tracking-widest">
+            SCAN_HISTORY & ANALYSIS
           </p>
         </div>
         <a
           href={`https://github.com/${owner}/${repo}/actions`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition-all hover:bg-white/10 hover:text-slate-200"
+          className="terminal-button"
         >
-          View Actions →
+          VIEW_ACTIONS ↗
         </a>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          <span>⚠️</span>
-          <span>{error}</span>
+        <div className="border border-accent bg-transparent px-4 py-3 font-mono text-xs text-accent">
+          [ERROR] {error}
           <button
             onClick={() => loadScans(page)}
-            className="ml-auto rounded-lg bg-red-500/20 px-3 py-1 text-xs font-medium hover:bg-red-500/30 transition-colors"
+            className="ml-4 underline underline-offset-4 hover:text-primary"
           >
-            Retry
+            RETRY
           </button>
         </div>
       )}
 
       {/* Summary stat cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
-        <StatCard label="Total Scans"    value={rows.length}                       color="text-white" />
-        <StatCard label="Total Findings" value={aggregateSummary.total_findings}  color="text-white" />
-        <StatCard label="Critical"       value={aggregateSummary.critical}         color="text-red-400" />
-        <StatCard label="High"           value={aggregateSummary.high}             color="text-orange-400" />
-        <StatCard label="Medium / Low"   value={aggregateSummary.medium + aggregateSummary.low} color="text-yellow-400" />
+      <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-5 border border-border">
+        <StatCard label="SCANS"    value={rows.length}                       color="text-primary" />
+        <StatCard label="FINDINGS" value={aggregateSummary.total_findings}  color="text-primary" />
+        <StatCard label="CRITICAL"       value={aggregateSummary.critical}         color="text-accent" />
+        <StatCard label="HIGH"           value={aggregateSummary.high}             color="text-orange-500" />
+        <StatCard label="MED_LOW"   value={aggregateSummary.medium + aggregateSummary.low} color="text-yellow-500" />
       </div>
 
       {/* Charts row */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="glass-card p-6 lg:col-span-2">
-          <h2 className="mb-4 text-sm font-semibold text-slate-300">📉 Findings Trend (30 days)</h2>
-          <TrendChart data={trendData} />
+        <div className="lg:col-span-2">
+          <h2 className="mb-4 font-mono text-xs font-bold uppercase tracking-widest text-muted">
+            ▸ FINDINGS_TREND [30D]
+          </h2>
+          <TrendChart data={trendData} className="terminal-panel !p-0 !pt-5" />
         </div>
-        <div className="glass-card p-6">
-          <h2 className="mb-4 text-sm font-semibold text-slate-300">🥧 Severity Breakdown</h2>
+        <div>
+          <h2 className="mb-4 font-mono text-xs font-bold uppercase tracking-widest text-muted">
+            ▸ SEVERITY_BREAKDOWN
+          </h2>
           <SeverityPieChart summary={aggregateSummary} />
         </div>
       </div>
 
       {/* History table */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-white">Scan History</h2>
+        <h2 className="mb-4 font-mono text-xs font-bold uppercase tracking-widest text-muted">
+          ▸ SCAN_HISTORY
+        </h2>
         <ScanHistoryTable rows={rows} owner={owner} repo={repo} isLoading={isLoading} />
       </div>
 
       {/* Pagination */}
       {!isLoading && (
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-between border-t border-border pt-4">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            className="font-mono text-xs text-primary hover:text-accent disabled:opacity-30 disabled:hover:text-primary transition-colors"
           >
-            ← Previous
+            ← PREV
           </button>
-          <span className="text-sm text-slate-500">Page {page}</span>
+          <span className="font-mono text-xs text-muted tabular-nums">PAGE_{page.toString().padStart(2, '0')}</span>
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={!hasMore}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            className="font-mono text-xs text-primary hover:text-accent disabled:opacity-30 disabled:hover:text-primary transition-colors"
           >
-            Next →
+            NEXT →
           </button>
         </div>
       )}
@@ -171,9 +176,11 @@ export default function RepoPage() {
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="stat-card">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
+    <div className="bg-background p-5 flex flex-col justify-between">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{label}</p>
+      <p className={`mt-2 font-mono text-xl font-bold tabular-nums ${color}`}>
+        {value.toString().padStart(4, '0')}
+      </p>
     </div>
   );
 }

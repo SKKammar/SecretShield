@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import type { Metadata } from 'next';
 import {
   getPat,
   setPat,
@@ -13,8 +12,6 @@ import {
   GitHubAuthError,
 } from '@/lib/github';
 import type { GitHubRepo } from '@/lib/types';
-
-// ─── Overview Page ─────────────────────────────────────────────────────────
 
 export default function OverviewPage() {
   const [pat, setPatState] = useState<string>('');
@@ -28,7 +25,6 @@ export default function OverviewPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Load PAT from localStorage on mount
   useEffect(() => {
     const stored = getPat();
     if (stored) {
@@ -43,7 +39,6 @@ export default function OverviewPage() {
       setUser(u);
       loadRepos();
     } catch {
-      // Token invalid or expired — clear silently
       clearPat();
       setPatState('');
     }
@@ -111,7 +106,6 @@ export default function OverviewPage() {
     }
   }, [loadRepos]);
 
-  // No PAT → show auth screen
   if (!pat) {
     return <AuthScreen
       inputPat={inputPat}
@@ -123,79 +117,70 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="animate-fade-in space-y-8">
+    <div className="space-y-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between border-b border-border pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">
-            <span className="gradient-text">Scan Overview</span>
+          <h1 className="font-mono text-2xl font-bold tracking-tight text-primary">
+            REPOSITORIES
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-2 font-mono text-xs text-muted uppercase tracking-widest">
             {user && (
-              <span className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={user.avatar_url} alt={user.login} className="h-5 w-5 rounded-full" />
-                Signed in as <strong className="text-slate-300">@{user.login}</strong>
+              <span>
+                AUTH_USER: <strong className="text-primary">{user.login}</strong>
               </span>
             )}
           </p>
         </div>
         <button
           onClick={handleSignOut}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition-all hover:bg-white/10 hover:text-slate-200"
+          className="font-mono text-xs text-muted hover:text-accent transition-colors uppercase tracking-widest"
         >
-          Sign out
+          [ SIGN_OUT ]
         </button>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
-          <svg className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
+      <div className="max-w-md">
+        <label htmlFor="repo-search" className="mb-2 block font-mono text-xs text-muted uppercase tracking-widest">
+          ▸ FILTER_REPOSITORIES
+        </label>
         <input
           type="text"
-          placeholder="Search repositories (e.g. SKKammar/secretshield)…"
+          placeholder="e.g. SKKammar/secretshield..."
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
-          className="input-dark pl-10"
+          className="terminal-input"
           id="repo-search"
         />
       </div>
 
       {/* Error state */}
       {searchError && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          <span>⚠️</span>
-          <span>{searchError}</span>
+        <div className="border border-accent bg-transparent px-4 py-3 font-mono text-xs text-accent">
+          [ERROR] {searchError}
           <button
             onClick={loadRepos}
-            className="ml-auto rounded-lg bg-red-500/20 px-3 py-1 text-xs font-medium hover:bg-red-500/30 transition-colors"
+            className="ml-4 underline underline-offset-4 hover:text-primary"
           >
-            Retry
+            RETRY
           </button>
         </div>
       )}
 
-      {/* Repo grid */}
+      {/* Repo list */}
       {isSearching ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="glass-card animate-pulse p-5">
-              <div className="mb-3 h-5 w-3/4 rounded-md bg-white/10" />
-              <div className="h-3 w-full rounded-md bg-white/5" />
-              <div className="mt-2 h-3 w-2/3 rounded-md bg-white/5" />
-            </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-10 w-full animate-pulse border border-border bg-surface" />
           ))}
         </div>
       ) : repos.length === 0 ? (
         <EmptyRepoState />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col border-y border-border">
           {repos.map((repo) => (
-            <RepoCard key={repo.id} repo={repo} />
+            <RepoRow key={repo.id} repo={repo} />
           ))}
         </div>
       )}
@@ -219,82 +204,64 @@ function AuthScreen({
   error: string | null;
 }) {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <div className="w-full max-w-md animate-slide-up">
-        {/* Hero */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 text-6xl">🛡️</div>
-          <h1 className="mb-2 text-3xl font-bold gradient-text">SecretShield</h1>
-          <p className="text-slate-400">
-            Connect your GitHub account to view scan history across all your repositories.
-          </p>
+    <div className="flex min-h-[60vh] flex-col justify-center max-w-[480px]">
+      <div className="mb-10">
+        <div className="mb-4 flex h-8 w-10 items-center justify-center border border-accent font-mono text-lg font-bold text-accent">
+          SS
+        </div>
+        <h1 className="font-mono text-2xl font-bold tracking-tight text-primary uppercase">
+          SecretShield
+        </h1>
+        <p className="mt-2 font-mono text-xs text-muted lowercase">
+          secret scanner for github actions
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="pat-input" className="mb-2 block font-mono text-xs font-bold text-accent uppercase tracking-widest">
+            ▸ GITHUB_TOKEN
+          </label>
+          <input
+            id="pat-input"
+            type="password"
+            placeholder="ghp_"
+            value={inputPat}
+            onChange={(e) => setInputPat(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && onSave()}
+            className="terminal-input font-mono"
+            autoComplete="off"
+          />
         </div>
 
-        {/* Auth card */}
-        <div className="glass-card border-gradient p-6">
-          <h2 className="mb-1 text-sm font-semibold text-slate-300">GitHub Personal Access Token</h2>
-          <p className="mb-4 text-xs text-slate-500">
-            Requires <code className="rounded bg-white/10 px-1 text-slate-400">read:actions</code> scope.{' '}
-            <a
-              href="https://github.com/settings/tokens/new?scopes=read:actions&description=SecretShield+Dashboard"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-shield-400 hover:text-shield-300 transition-colors"
-            >
-              Generate one →
-            </a>
+        {error && (
+          <p className="font-mono text-xs text-accent">
+            [ERROR] {error}
           </p>
+        )}
 
-          <div className="space-y-3">
-            <input
-              id="pat-input"
-              type="password"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              value={inputPat}
-              onChange={(e) => setInputPat(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSave()}
-              className="input-dark font-mono"
-              autoComplete="off"
-            />
-
-            {error && (
-              <p className="flex items-center gap-1.5 text-xs text-red-400">
-                <span>⚠️</span> {error}
-              </p>
-            )}
-
-            <button
-              id="connect-btn"
-              onClick={onSave}
-              disabled={isValidating || !inputPat.trim()}
-              className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isValidating ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Connecting…
-                </span>
-              ) : (
-                'Connect GitHub Account'
-              )}
-            </button>
-          </div>
-
-          <p className="mt-4 text-center text-xs text-slate-600">
-            🔒 Token stored locally in your browser only — never sent to any server.
-          </p>
+        <div>
+          <button
+            id="connect-btn"
+            onClick={onSave}
+            disabled={isValidating || !inputPat.trim()}
+            className="terminal-button"
+          >
+            {isValidating ? '→ CONNECTING...' : '→ CONNECT'}
+          </button>
         </div>
+        
+        <p className="font-mono text-[11px] text-muted lowercase">
+          stored in localStorage · never leaves your browser
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Repo Card ──────────────────────────────────────────────────────────────
+// ─── Repo Row ──────────────────────────────────────────────────────────────
 
-function RepoCard({ repo }: { repo: GitHubRepo }) {
+function RepoRow({ repo }: { repo: GitHubRepo }) {
   const [owner, repoName] = repo.full_name.split('/');
   const updatedAt = new Date(repo.updated_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -303,39 +270,26 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
   return (
     <Link
       href={`/repo/${owner}/${repoName}`}
-      className="group glass-card block p-5 transition-all hover:border-shield-500/30 hover:bg-white/8 hover:shadow-lg hover:shadow-shield-500/10"
+      className="group flex flex-col sm:flex-row sm:items-center justify-between border-b border-border bg-background px-4 py-3 transition-colors hover:border-l-2 hover:border-l-accent hover:bg-surface border-l-2 border-l-transparent"
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={repo.owner.avatar_url}
-            alt={repo.owner.login}
-            className="h-6 w-6 flex-shrink-0 rounded-full"
-          />
-          <span className="truncate text-sm font-semibold text-white group-hover:text-shield-200 transition-colors">
-            {repo.full_name}
-          </span>
-        </div>
-        {repo.private && (
-          <span className="flex-shrink-0 rounded-full bg-slate-700/60 px-2 py-0.5 text-xs text-slate-400">
-            Private
-          </span>
-        )}
+      <div className="flex flex-col gap-1">
+        <span className="font-mono text-sm text-primary group-hover:text-accent transition-colors">
+          {repo.full_name}
+        </span>
+        <span className="font-mono text-[11px] text-muted max-w-xl truncate">
+          {repo.description || 'NO_DESCRIPTION'}
+        </span>
       </div>
 
-      {repo.description && (
-        <p className="mb-3 line-clamp-2 text-xs text-slate-400">{repo.description}</p>
-      )}
-
-      <div className="flex items-center gap-3 text-xs text-slate-500">
-        <span className="flex items-center gap-1">
-          ⭐ {repo.stargazers_count}
+      <div className="mt-2 sm:mt-0 flex items-center gap-6 font-mono text-xs text-muted">
+        {repo.private && (
+          <span className="text-orange-500">[PRIVATE]</span>
+        )}
+        <span className="tabular-nums flex items-center gap-1">
+          <svg className="h-3 w-3 fill-muted" viewBox="0 0 16 16"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path></svg>
+          {repo.stargazers_count.toString().padStart(3, '0')}
         </span>
-        <span>Updated {updatedAt}</span>
-        <span className="ml-auto text-shield-400 opacity-0 group-hover:opacity-100 transition-opacity">
-          View scans →
-        </span>
+        <span className="tabular-nums">UPD: {updatedAt}</span>
       </div>
     </Link>
   );
@@ -345,15 +299,14 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
 
 function EmptyRepoState() {
   return (
-    <div className="glass-card flex flex-col items-center justify-center py-20 text-center">
-      <div className="mb-4 text-5xl">🔍</div>
-      <h3 className="mb-2 text-lg font-semibold text-white">No repositories found</h3>
-      <p className="mb-6 max-w-sm text-sm text-slate-400">
-        Try searching for a specific repository, or make sure your PAT has access to the repos you want to scan.
+    <div className="terminal-panel text-center py-16 border-border border">
+      <p className="font-mono text-sm font-bold text-accent mb-2">NO_REPOSITORIES_FOUND</p>
+      <p className="font-mono text-xs text-muted mb-6">
+        Search for a specific repository or ensure your PAT has access.
       </p>
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-left text-xs text-slate-400">
-        <p className="mb-1 font-semibold text-slate-300">Add SecretShield to any repo:</p>
-        <pre className="mt-2 overflow-x-auto text-shield-300">{`uses: SKKammar/secretshield@v1
+      <div className="inline-block text-left border border-border bg-[#0a0a0a] p-4 font-mono text-xs">
+        <p className="text-muted mb-2"># ADD SECRETSHIELD TO GITHUB ACTIONS:</p>
+        <pre className="text-mono-value">{`uses: SKKammar/secretshield@v1
 with:
   token: \${{ secrets.GITHUB_TOKEN }}`}</pre>
       </div>
