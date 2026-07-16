@@ -112,7 +112,7 @@ export default function OverviewPage() {
   }, [loadRepos]);
 
   // No PAT → show auth screen
-  if (!patState) {
+  if (!pat) {
     return <AuthScreen
       inputPat={inputPat}
       setInputPat={setInputPat}
