@@ -44,7 +44,7 @@ jobs:
           persist-credentials: true
 
       - name: Run SecretShield
-        uses: SKKammar/secretshield@v1
+        uses: SKKammar/secretshield@v1.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           severity_threshold: "HIGH"
@@ -102,7 +102,7 @@ jobs:
 ```yaml
 - name: Run SecretShield
   id: scan
-  uses: SKKammar/secretshield@v1
+  uses: SKKammar/secretshield@v1.1.0
 
 - name: Check results
   run: |
@@ -191,7 +191,7 @@ These file types are detected regardless of content:
 Extend SecretShield's detection with your own regex patterns via the `custom_patterns` input:
 
 ```yaml
-- uses: SKKammar/secretshield@v1
+- uses: SKKammar/secretshield@v1.1.0
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     custom_patterns: "MYAPP_SECRET=[A-Za-z0-9]{32},internal_token_[a-z]+"

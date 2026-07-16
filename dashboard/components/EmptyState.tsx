@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: SKKammar/secretshield@v1
+      - uses: SKKammar/secretshield@v1.1.0
         with:
           token: \${{ secrets.GITHUB_TOKEN }}`;
 
