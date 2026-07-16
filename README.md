@@ -52,6 +52,7 @@ jobs:
           fail_on_secrets: "true"
 
       - name: Upload scan report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: secretshield-report

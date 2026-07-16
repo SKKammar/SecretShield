@@ -47,6 +47,12 @@ jobs:
         uses: SKKammar/secretshield@v1.1.0
         with:
           token: \${{ secrets.GITHUB_TOKEN }}
+      - name: Upload scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secretshield-report
+          path: secretshield-report.json
 `;
 
 const API_BASE = 'https://api.github.com';
