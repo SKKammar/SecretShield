@@ -162,8 +162,8 @@ write_step_summary
 should_fail() {
   case "$SEVERITY_THRESHOLD" in
     "CRITICAL") [ "$CRITICAL_COUNT" -gt 0 ] && return 0 ;;
-    "HIGH")     ([ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]) && return 0 ;;
-    "MEDIUM")   ([ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ] || [ "$MEDIUM_COUNT" -gt 0 ]) && return 0 ;;
+    "HIGH")     { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; } && return 0 ;;
+    "MEDIUM")   { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ] || [ "$MEDIUM_COUNT" -gt 0 ]; } && return 0 ;;
     "LOW")      [ "$TOTAL_FINDINGS" -gt 0 ] && return 0 ;;
   esac
   return 1

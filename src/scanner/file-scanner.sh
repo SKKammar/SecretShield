@@ -66,6 +66,7 @@ while IFS= read -r -d '' file; do
     */.next/*|*/.next|*/dist/*|*/dist|*/build/*|*/build|*/node_modules/*|*/node_modules) continue ;;
   esac
 
+  # shellcheck disable=SC2034
   matched=false
 
   # ── .env and .env.* variants ──────────────────────────────────────────────
