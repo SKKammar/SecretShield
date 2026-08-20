@@ -9,6 +9,7 @@ const GITHUB_API_BASE = 'https://api.github.com';
  * The PAT is passed from the client via the Authorization header.
  */
 export const runtime = 'nodejs';
+import { getSessionToken } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -23,9 +24,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) {
-    return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
       `${GITHUB_API_BASE}/repos/${owner}/${repo}/actions/artifacts/${artifactId}`,
       {
         headers: {
-          Authorization: authHeader,
+          Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Step 2: Download the artifact ZIP
     const zipRes = await fetch(artifact.archive_download_url, {
       headers: {
-        Authorization: authHeader,
+        Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
