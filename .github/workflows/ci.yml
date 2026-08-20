@@ -31,7 +31,7 @@ jobs:
       - name: Run shfmt
         run: |
           sudo apt-get install -y shfmt
-          shfmt -d .
+          shfmt -i 2 -d .
 
       - name: Run SecretShield (self-scan)
         id: scan
