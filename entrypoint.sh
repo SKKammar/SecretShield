@@ -8,7 +8,7 @@ cd "$WORKSPACE"
 
 # ─── Git setup ───────────────────────────────────────────────────────────────
 git config --global --add safe.directory "$WORKSPACE"
-git config user.name  "secretshield[bot]"
+git config user.name "secretshield[bot]"
 git config user.email "secretshield[bot]@users.noreply.github.com"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ FINAL_REPORT="$WORKSPACE/secretshield-report.json"
 
 GITLEAKS_IGNORE_ARGS=()
 if [ -n "$IGNORE_PATHS" ]; then
-  IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
+  IFS=',' read -ra PATHS <<<"$IGNORE_PATHS"
   for p in "${PATHS[@]}"; do
     p_trimmed="$(printf '%s' "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     if [ -n "$p_trimmed" ]; then
@@ -76,43 +76,43 @@ gitleaks detect \
   --report-path "$GITLEAKS_REPORT" \
   --exit-code 0 \
   "${GITLEAKS_IGNORE_ARGS[@]}" \
-  "${GITLEAKS_EXTRA_ARGS[@]}" \
-  || true
+  "${GITLEAKS_EXTRA_ARGS[@]}" ||
+  true
 
 # Run Gitleaks again for SARIF output if enabled
-  # Gitleaks native SARIF is no longer generated here.
-  # report-generator.js will create a unified SARIF report at $FINAL_SARIF.
-  FINAL_SARIF="$WORKSPACE/secretshield.sarif"
-  echo "sarif_path=$FINAL_SARIF" >> "${GITHUB_OUTPUT:-/dev/null}"
+# Gitleaks native SARIF is no longer generated here.
+# report-generator.js will create a unified SARIF report at $FINAL_SARIF.
+FINAL_SARIF="$WORKSPACE/secretshield.sarif"
+echo "sarif_path=$FINAL_SARIF" >>"${GITHUB_OUTPUT:-/dev/null}"
 
 # Ensure file exists even if empty
-[ -f "$GITLEAKS_REPORT" ] || echo "[]" > "$GITLEAKS_REPORT"
+[ -f "$GITLEAKS_REPORT" ] || echo "[]" >"$GITLEAKS_REPORT"
 
 # ─── 2. Run custom file-pattern scanner ───────────────────────────────────────
 echo "🔍 Running custom file-pattern scanner..."
 IGNORE_PATHS="$IGNORE_PATHS" CUSTOM_PATTERNS="$CUSTOM_PATTERNS" \
-  /action/src/scanner/file-scanner.sh > "$FILE_SCANNER_REPORT"
+  /action/src/scanner/file-scanner.sh >"$FILE_SCANNER_REPORT"
 
 # ─── 3. Generate unified report ───────────────────────────────────────────────
 echo "📊 Generating unified report..."
 GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
-GITHUB_SHA="$GITHUB_SHA" \
-GITHUB_REF_NAME="$GITHUB_REF_NAME" \
-GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
-SCAN_SCOPE="$SCAN_SCOPE" \
-REQUEST_ID="${REQUEST_ID:-}" \
+  GITHUB_SHA="$GITHUB_SHA" \
+  GITHUB_REF_NAME="$GITHUB_REF_NAME" \
+  GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+  SCAN_SCOPE="$SCAN_SCOPE" \
+  REQUEST_ID="${REQUEST_ID:-}" \
   node /action/src/scanner/report-generator.js \
-    "$GITLEAKS_REPORT" \
-    "$FILE_SCANNER_REPORT" \
-    "$FINAL_REPORT"
+  "$GITLEAKS_REPORT" \
+  "$FILE_SCANNER_REPORT" \
+  "$FINAL_REPORT"
 
 # ─── 4. Parse summary ─────────────────────────────────────────────────────────
 TOTAL_FINDINGS=$(jq -r '.summary.total_findings' "$FINAL_REPORT")
-CRITICAL_COUNT=$(jq -r '.summary.critical'        "$FINAL_REPORT")
-HIGH_COUNT=$(jq    -r '.summary.high'             "$FINAL_REPORT")
-MEDIUM_COUNT=$(jq  -r '.summary.medium'           "$FINAL_REPORT")
-LOW_COUNT=$(jq     -r '.summary.low'              "$FINAL_REPORT")
-SCAN_ID=$(jq       -r '.scan_id'                  "$FINAL_REPORT")
+CRITICAL_COUNT=$(jq -r '.summary.critical' "$FINAL_REPORT")
+HIGH_COUNT=$(jq -r '.summary.high' "$FINAL_REPORT")
+MEDIUM_COUNT=$(jq -r '.summary.medium' "$FINAL_REPORT")
+LOW_COUNT=$(jq -r '.summary.low' "$FINAL_REPORT")
+SCAN_ID=$(jq -r '.scan_id' "$FINAL_REPORT")
 
 if [ "$TOTAL_FINDINGS" -gt 0 ]; then
   SECRETS_FOUND="true"
@@ -125,7 +125,7 @@ fi
   echo "secrets_found=$SECRETS_FOUND"
   echo "total_findings=$TOTAL_FINDINGS"
   echo "report_path=$FINAL_REPORT"
-} >> "${GITHUB_OUTPUT:-/dev/null}"
+} >>"${GITHUB_OUTPUT:-/dev/null}"
 
 # ─── 6. Write GITHUB_STEP_SUMMARY ────────────────────────────────────────────
 write_step_summary() {
@@ -154,17 +154,17 @@ write_step_summary() {
     else
       echo "### ✅ No secrets detected — repository is clean!"
     fi
-  } >> "$GITHUB_STEP_SUMMARY"
+  } >>"$GITHUB_STEP_SUMMARY"
 }
 write_step_summary
 
 # ─── 7. Threshold check function ─────────────────────────────────────────────
 should_fail() {
   case "$SEVERITY_THRESHOLD" in
-    "CRITICAL") [ "$CRITICAL_COUNT" -gt 0 ] && return 0 ;;
-    "HIGH")     { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; } && return 0 ;;
-    "MEDIUM")   { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ] || [ "$MEDIUM_COUNT" -gt 0 ]; } && return 0 ;;
-    "LOW")      [ "$TOTAL_FINDINGS" -gt 0 ] && return 0 ;;
+  "CRITICAL") [ "$CRITICAL_COUNT" -gt 0 ] && return 0 ;;
+  "HIGH") { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; } && return 0 ;;
+  "MEDIUM") { [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ] || [ "$MEDIUM_COUNT" -gt 0 ]; } && return 0 ;;
+  "LOW") [ "$TOTAL_FINDINGS" -gt 0 ] && return 0 ;;
   esac
   return 1
 }
@@ -182,7 +182,8 @@ post_pr_comment() {
   findings_table=$(jq -r '.findings[] | "| \(.severity) | `\(.file)` | L\(.line) | \(.rule) | \(.match) | \(.source) |"' "$FINAL_REPORT")
 
   local comment_body
-  comment_body=$(cat <<EOF
+  comment_body=$(
+    cat <<EOF
 <!-- secretshield-report-marker -->
 ## 🚨 SecretShield — Secrets Detected
 
@@ -221,7 +222,7 @@ $findings_table
 ---
 *🛡️ SecretShield — Scan ID: \`$SCAN_ID\`*
 EOF
-)
+  )
 
   # Escape for JSON
   local escaped_body
@@ -230,8 +231,8 @@ EOF
   # Search for an existing bot comment
   local existing_comment_id
   existing_comment_id=$(curl -s -H "Authorization: token ${GITHUB_TOKEN:-}" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
-    | jq -r '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- secretshield-report-marker -->"))) | .id' | head -n 1)
+    "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" |
+    jq -r '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- secretshield-report-marker -->"))) | .id' | head -n 1)
 
   if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
     curl -s \
@@ -240,7 +241,7 @@ EOF
       -X PATCH \
       -d "{\"body\": $escaped_body}" \
       "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${existing_comment_id}" \
-      > /dev/null
+      >/dev/null
     echo "💬 PR comment updated."
   else
     curl -s \
@@ -249,7 +250,7 @@ EOF
       -X POST \
       -d "{\"body\": $escaped_body}" \
       "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
-      > /dev/null
+      >/dev/null
     echo "💬 PR comment posted."
   fi
 }
@@ -265,11 +266,11 @@ auto_remove_files() {
     if [ -f "$WORKSPACE/$filepath" ]; then
       git -C "$WORKSPACE" rm --force "$filepath" 2>/dev/null || git -C "$WORKSPACE" rm --cached "$filepath" 2>/dev/null || true
       # Append to .gitignore
-      echo "$filepath" >> "$WORKSPACE/.gitignore"
+      echo "$filepath" >>"$WORKSPACE/.gitignore"
       echo "  🗑️  Removed: $filepath"
       removed_any=true
     fi
-  done <<< "$files_to_remove"
+  done <<<"$files_to_remove"
 
   if [ "$removed_any" = "true" ]; then
     # Deduplicate .gitignore
@@ -290,7 +291,7 @@ Scan ID: $SCAN_ID"
 
     # Securely push without exposing the token in process logs
     git -C "$WORKSPACE" -c http.extraHeader="Authorization: Basic $(echo -n "x-access-token:${GITHUB_TOKEN:-}" | base64 | tr -d '\n')" \
-      push origin HEAD:"$GITHUB_REF_NAME" || \
+      push origin HEAD:"$GITHUB_REF_NAME" ||
       echo "⚠️  Push failed — ensure the token has contents:write permission."
 
     echo "✅ Auto-remove commit pushed."

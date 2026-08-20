@@ -10,7 +10,7 @@ CUSTOM_PATTERNS="${CUSTOM_PATTERNS:-}"
 # ─── Collect find excludes ────────────────────────────────────────────────────
 EXCLUDES=("-not" "-path" "*/.git/*" "-not" "-path" "*/node_modules/*")
 if [ -n "$IGNORE_PATHS" ]; then
-  IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
+  IFS=',' read -ra PATHS <<<"$IGNORE_PATHS"
   for p in "${PATHS[@]}"; do
     # Trim leading and trailing whitespace safely
     p_trimmed="$(printf '%s' "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
@@ -39,18 +39,16 @@ add_finding() {
 
   local finding
   finding=$(jq -n \
-    --arg id       "$id" \
+    --arg id "$id" \
     --arg severity "$severity" \
     --argjson file "$esc_file" \
-    --arg rule     "$rule" \
-    --arg match    "[REDACTED]" \
-    --arg source   "file-scanner" \
+    --arg rule "$rule" \
+    --arg match "[REDACTED]" \
+    --arg source "file-scanner" \
     '{id: $id, severity: $severity, file: $file, line: 1, match: $match, rule: $rule, source: $source}')
 
   FINDINGS=$(echo "$FINDINGS" | jq ". += [$finding]")
 }
-
-
 
 # ─── Scan all files in workspace ─────────────────────────────────────────────
 cd "$WORKSPACE"
@@ -63,10 +61,8 @@ while IFS= read -r -d '' file; do
 
   # Skip .next, dist, build, node_modules explicitly
   case "$dirname_part" in
-    */.next/*|*/.next|*/dist/*|*/dist|*/build/*|*/build|*/node_modules/*|*/node_modules) continue ;;
+  */.next/* | */.next | */dist/* | */dist | */build/* | */build | */node_modules/* | */node_modules) continue ;;
   esac
-
-
 
   # ── .env and .env.* variants ──────────────────────────────────────────────
   if [[ "$basename_lower" == ".env" || "$basename_lower" == .env.* ]]; then
@@ -74,9 +70,9 @@ while IFS= read -r -d '' file; do
   fi
 
   # ── Private key files ─────────────────────────────────────────────────────
-  if [[ "$basename_lower" == *.pem || "$basename_lower" == *.key \
-     || "$basename_lower" == id_rsa* || "$basename_lower" == id_dsa* \
-     || "$basename_lower" == id_ecdsa* || "$basename_lower" == id_ed25519* ]]; then
+  if [[ "$basename_lower" == *.pem || "$basename_lower" == *.key ||
+    "$basename_lower" == id_rsa* || "$basename_lower" == id_dsa* ||
+    "$basename_lower" == id_ecdsa* || "$basename_lower" == id_ed25519* ]]; then
     add_finding "$file" "CRITICAL" "private-key-file" "private-key-file"
   fi
 
@@ -86,8 +82,8 @@ while IFS= read -r -d '' file; do
   fi
 
   # ── secrets.json / secrets.yaml / secrets.yml ────────────────────────────
-  if [[ "$basename_lower" == "secrets.json" || "$basename_lower" == "secrets.yaml" \
-     || "$basename_lower" == "secrets.yml" ]]; then
+  if [[ "$basename_lower" == "secrets.json" || "$basename_lower" == "secrets.yaml" ||
+    "$basename_lower" == "secrets.yml" ]]; then
     add_finding "$file" "CRITICAL" "secrets-config-file" "secrets-config-file"
   fi
 
@@ -115,7 +111,7 @@ done < <(find "$WORKSPACE" -type f ! -type l "${EXCLUDES[@]}" -print0 2>/dev/nul
 
 # ─── Custom pattern scan (content-based regex) ────────────────────────────────
 if [ -n "$CUSTOM_PATTERNS" ]; then
-  IFS=',' read -ra PATTERNS <<< "$CUSTOM_PATTERNS"
+  IFS=',' read -ra PATTERNS <<<"$CUSTOM_PATTERNS"
   for pattern in "${PATTERNS[@]}"; do
     pattern_trimmed="${pattern// /}"
     [ -z "$pattern_trimmed" ] && continue
@@ -124,12 +120,12 @@ if [ -n "$CUSTOM_PATTERNS" ]; then
       # Skip already-matched files for this iteration
       add_finding "$match_file" "HIGH" "custom-pattern" "custom-pattern"
     done < <(grep -rlIE "$pattern_trimmed" "$WORKSPACE" \
-               --exclude-dir=".git" \
-               --exclude-dir="node_modules" \
-               --exclude-dir=".next" \
-               --exclude-dir="dist" \
-               --exclude-dir="build" \
-               2>/dev/null || true)
+      --exclude-dir=".git" \
+      --exclude-dir="node_modules" \
+      --exclude-dir=".next" \
+      --exclude-dir="dist" \
+      --exclude-dir="build" \
+      2>/dev/null || true)
   done
 fi
 
