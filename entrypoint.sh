@@ -12,8 +12,11 @@ git config user.name "secretshield[bot]"
 git config user.email "secretshield[bot]@users.noreply.github.com"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
-AUTO_REMOVE="${AUTO_REMOVE:-true}"
+AUTO_REMOVE="${AUTO_REMOVE:-false}"
 FAIL_ON_SECRETS="${FAIL_ON_SECRETS:-true}"
+SARIF_UPLOAD="${SARIF_UPLOAD:-false}"
+COMMENT_ON_PR="${COMMENT_ON_PR:-true}"
+ALLOW_MUTATION="${ALLOW_MUTATION:-false}"
 CUSTOM_PATTERNS="${CUSTOM_PATTERNS:-}"
 IGNORE_PATHS="${IGNORE_PATHS:-}"
 SEVERITY_THRESHOLD="${SEVERITY_THRESHOLD:-HIGH}"
