@@ -13,7 +13,7 @@ if [ -n "$IGNORE_PATHS" ]; then
   IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
   for p in "${PATHS[@]}"; do
     # Trim leading and trailing whitespace safely
-    p_trimmed="$(echo -e "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    p_trimmed="$(printf '%s' "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     if [ -n "$p_trimmed" ]; then
       EXCLUDES+=("-not" "-path" "*/${p_trimmed}*")
     fi
