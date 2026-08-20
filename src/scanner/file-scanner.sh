@@ -31,7 +31,7 @@ add_finding() {
 
   # Strip leading ./ for cleaner paths
   local clean_file
-  clean_file=$(echo "$file" | sed 's|^\./||')
+  clean_file="${file#./}"
 
   # Escape for JSON
   local esc_file
@@ -66,13 +66,11 @@ while IFS= read -r -d '' file; do
     */.next/*|*/.next|*/dist/*|*/dist|*/build/*|*/build|*/node_modules/*|*/node_modules) continue ;;
   esac
 
-  # shellcheck disable=SC2034
-  matched=false
+
 
   # ── .env and .env.* variants ──────────────────────────────────────────────
   if [[ "$basename_lower" == ".env" || "$basename_lower" == .env.* ]]; then
     add_finding "$file" "HIGH" "env-file-detected" "env-file-detected"
-    matched=true
   fi
 
   # ── Private key files ─────────────────────────────────────────────────────
@@ -80,44 +78,37 @@ while IFS= read -r -d '' file; do
      || "$basename_lower" == id_rsa* || "$basename_lower" == id_dsa* \
      || "$basename_lower" == id_ecdsa* || "$basename_lower" == id_ed25519* ]]; then
     add_finding "$file" "CRITICAL" "private-key-file" "private-key-file"
-    matched=true
   fi
 
   # ── Certificate / keystore files ─────────────────────────────────────────
   if [[ "$basename_lower" == *.p12 || "$basename_lower" == *.pfx ]]; then
     add_finding "$file" "CRITICAL" "keystore-file" "keystore-file"
-    matched=true
   fi
 
   # ── secrets.json / secrets.yaml / secrets.yml ────────────────────────────
   if [[ "$basename_lower" == "secrets.json" || "$basename_lower" == "secrets.yaml" \
      || "$basename_lower" == "secrets.yml" ]]; then
     add_finding "$file" "CRITICAL" "secrets-config-file" "secrets-config-file"
-    matched=true
   fi
 
   # ── credentials.json ─────────────────────────────────────────────────────
   if [[ "$basename_lower" == "credentials.json" ]]; then
     add_finding "$file" "CRITICAL" "credentials-file" "credentials-file"
-    matched=true
   fi
 
   # ── service-account.json ─────────────────────────────────────────────────
   if [[ "$basename_lower" == "service-account.json" ]]; then
     add_finding "$file" "CRITICAL" "service-account-file" "service-account-file"
-    matched=true
   fi
 
   # ── firebase-adminsdk*.json ───────────────────────────────────────────────
   if [[ "$basename_lower" == firebase-adminsdk*.json ]]; then
     add_finding "$file" "CRITICAL" "firebase-adminsdk-file" "firebase-adminsdk-file"
-    matched=true
   fi
 
   # ── google-credentials.json ───────────────────────────────────────────────
   if [[ "$basename_lower" == "google-credentials.json" ]]; then
     add_finding "$file" "CRITICAL" "google-credentials-file" "google-credentials-file"
-    matched=true
   fi
 
 done < <(find "$WORKSPACE" -type f ! -type l "${EXCLUDES[@]}" -print0 2>/dev/null)
