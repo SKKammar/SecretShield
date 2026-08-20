@@ -21,6 +21,26 @@ GITHUB_EVENT_NAME="${GITHUB_EVENT_NAME:-push}"
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-unknown/repo}"
 GITHUB_SHA="${GITHUB_SHA:-unknown}"
 GITHUB_REF_NAME="${GITHUB_REF_NAME:-unknown}"
+SCAN_SCOPE="${SCAN_SCOPE:-all}"
+
+# ─── Validation ──────────────────────────────────────────────────────────────
+# Validate boolean inputs
+for var in AUTO_REMOVE FAIL_ON_SECRETS SARIF_UPLOAD COMMENT_ON_PR ALLOW_MUTATION; do
+  val="${!var}"
+  val_lower=$(echo "$val" | tr '[:upper:]' '[:lower:]')
+  if [[ "$val_lower" != "true" && "$val_lower" != "false" ]]; then
+    echo "❌ Error: $var must be 'true' or 'false', got '$val'"
+    exit 1
+  fi
+  export "$var"="$val_lower"
+done
+
+# Validate SEVERITY_THRESHOLD
+SEVERITY_THRESHOLD=$(echo "$SEVERITY_THRESHOLD" | tr '[:lower:]' '[:upper:]')
+if [[ "$SEVERITY_THRESHOLD" != "CRITICAL" && "$SEVERITY_THRESHOLD" != "HIGH" && "$SEVERITY_THRESHOLD" != "MEDIUM" && "$SEVERITY_THRESHOLD" != "LOW" ]]; then
+  echo "❌ Error: SEVERITY_THRESHOLD must be CRITICAL, HIGH, MEDIUM, or LOW. Got '$SEVERITY_THRESHOLD'"
+  exit 1
+fi
 
 REPORT_DIR="/tmp/secretshield"
 mkdir -p "$REPORT_DIR"
@@ -29,20 +49,21 @@ GITLEAKS_REPORT="$REPORT_DIR/gitleaks-report.json"
 FILE_SCANNER_REPORT="$REPORT_DIR/file-scanner-report.json"
 FINAL_REPORT="$WORKSPACE/secretshield-report.json"
 
-# ─── Build ignore args ────────────────────────────────────────────────────────
-GITLEAKS_IGNORE_ARGS=""
+GITLEAKS_IGNORE_ARGS=()
 if [ -n "$IGNORE_PATHS" ]; then
   IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
   for p in "${PATHS[@]}"; do
     p_trimmed="${p// /}"
-    GITLEAKS_IGNORE_ARGS="$GITLEAKS_IGNORE_ARGS --ignore-path=$p_trimmed"
+    if [ -n "$p_trimmed" ]; then
+      GITLEAKS_IGNORE_ARGS+=("--ignore-path=$p_trimmed")
+    fi
   done
 fi
 
-GITLEAKS_EXTRA_ARGS=""
+GITLEAKS_EXTRA_ARGS=()
 if [ ! -d ".git" ]; then
   echo "⚠️  No .git directory found! Did you forget actions/checkout? Running Gitleaks in --no-git mode..."
-  GITLEAKS_EXTRA_ARGS="--no-git"
+  GITLEAKS_EXTRA_ARGS+=("--no-git")
 fi
 
 # ─── 1. Run Gitleaks ─────────────────────────────────────────────────────────
@@ -54,25 +75,15 @@ gitleaks detect \
   --report-format json \
   --report-path "$GITLEAKS_REPORT" \
   --exit-code 0 \
-  $GITLEAKS_IGNORE_ARGS \
-  $GITLEAKS_EXTRA_ARGS \
+  "${GITLEAKS_IGNORE_ARGS[@]}" \
+  "${GITLEAKS_EXTRA_ARGS[@]}" \
   || true
 
 # Run Gitleaks again for SARIF output if enabled
-if [ "${SARIF_UPLOAD:-false}" = "true" ]; then
-  echo "📄 Generating SARIF report..."
-  gitleaks detect \
-    --source . \
-    --config /action/.gitleaks.toml \
-    --redact \
-    --report-format sarif \
-    --report-path "$REPORT_DIR/gitleaks.sarif" \
-    --exit-code 0 \
-    $GITLEAKS_IGNORE_ARGS \
-    $GITLEAKS_EXTRA_ARGS \
-    || true
-  echo "sarif_path=$REPORT_DIR/gitleaks.sarif" >> "${GITHUB_OUTPUT:-/dev/null}"
-fi
+  # Gitleaks native SARIF is no longer generated here.
+  # report-generator.js will create a unified SARIF report at $FINAL_SARIF.
+  FINAL_SARIF="$WORKSPACE/secretshield.sarif"
+  echo "sarif_path=$FINAL_SARIF" >> "${GITHUB_OUTPUT:-/dev/null}"
 
 # Ensure file exists even if empty
 [ -f "$GITLEAKS_REPORT" ] || echo "[]" > "$GITLEAKS_REPORT"
@@ -88,6 +99,8 @@ GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
 GITHUB_SHA="$GITHUB_SHA" \
 GITHUB_REF_NAME="$GITHUB_REF_NAME" \
 GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+SCAN_SCOPE="$SCAN_SCOPE" \
+REQUEST_ID="${REQUEST_ID:-}" \
   node /action/src/scanner/report-generator.js \
     "$GITLEAKS_REPORT" \
     "$FILE_SCANNER_REPORT" \
@@ -158,6 +171,8 @@ should_fail() {
 
 # ─── 8. Handle PR ─────────────────────────────────────────────────────────────
 post_pr_comment() {
+  if [ "$COMMENT_ON_PR" != "true" ]; then return; fi
+
   local pr_number
   pr_number=$(jq --raw-output '.pull_request.number' "${GITHUB_EVENT_PATH:-/dev/null}" 2>/dev/null || echo "")
   [ -z "$pr_number" ] || [ "$pr_number" = "null" ] && return
@@ -168,6 +183,7 @@ post_pr_comment() {
 
   local comment_body
   comment_body=$(cat <<EOF
+<!-- secretshield-report-marker -->
 ## 🚨 SecretShield — Secrets Detected
 
 SecretShield found **$TOTAL_FINDINGS** secret(s) / sensitive file(s) in this pull request.
@@ -211,15 +227,31 @@ EOF
   local escaped_body
   escaped_body=$(echo "$comment_body" | jq -Rs .)
 
-  curl -s \
-    -H "Authorization: token ${GITHUB_TOKEN:-}" \
-    -H "Content-Type: application/json" \
-    -X POST \
-    -d "{\"body\": $escaped_body}" \
+  # Search for an existing bot comment
+  local existing_comment_id
+  existing_comment_id=$(curl -s -H "Authorization: token ${GITHUB_TOKEN:-}" \
     "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
-    > /dev/null
+    | jq -r '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- secretshield-report-marker -->"))) | .id' | head -n 1)
 
-  echo "💬 PR comment posted."
+  if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
+    curl -s \
+      -H "Authorization: token ${GITHUB_TOKEN:-}" \
+      -H "Content-Type: application/json" \
+      -X PATCH \
+      -d "{\"body\": $escaped_body}" \
+      "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${existing_comment_id}" \
+      > /dev/null
+    echo "💬 PR comment updated."
+  else
+    curl -s \
+      -H "Authorization: token ${GITHUB_TOKEN:-}" \
+      -H "Content-Type: application/json" \
+      -X POST \
+      -d "{\"body\": $escaped_body}" \
+      "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
+      > /dev/null
+    echo "💬 PR comment posted."
+  fi
 }
 
 # ─── 9. Auto-remove (push only) ───────────────────────────────────────────────
@@ -256,10 +288,10 @@ WARNING: Secrets may still exist in git history. You MUST:
 
 Scan ID: $SCAN_ID"
 
-    git -C "$WORKSPACE" push \
-      "https://x-access-token:${GITHUB_TOKEN:-}@github.com/${GITHUB_REPOSITORY}.git" \
-      HEAD:"$GITHUB_REF_NAME" \
-      || echo "⚠️  Push failed — ensure the token has contents:write permission."
+    # Securely push without exposing the token in process logs
+    git -C "$WORKSPACE" -c http.extraHeader="Authorization: Basic $(echo -n "x-access-token:${GITHUB_TOKEN:-}" | base64 | tr -d '\n')" \
+      push origin HEAD:"$GITHUB_REF_NAME" || \
+      echo "⚠️  Push failed — ensure the token has contents:write permission."
 
     echo "✅ Auto-remove commit pushed."
   fi
@@ -280,9 +312,13 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
 
 elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
   echo "📋 Event: push"
-  if [ "$SECRETS_FOUND" = "true" ] && [ "$AUTO_REMOVE" = "true" ]; then
-    echo "🗑️  Auto-removing sensitive files..."
-    auto_remove_files
+  if [ "$SECRETS_FOUND" = "true" ]; then
+    if [ "$AUTO_REMOVE" = "true" ] && [ "$ALLOW_MUTATION" = "true" ]; then
+      echo "🗑️  Auto-removing sensitive files..."
+      auto_remove_files
+    elif [ "$AUTO_REMOVE" = "true" ]; then
+      echo "⚠️  AUTO_REMOVE is true but ALLOW_MUTATION is false. Mutation is skipped for safety."
+    fi
   fi
   if [ "$SECRETS_FOUND" = "true" ] && [ "$FAIL_ON_SECRETS" = "true" ] && should_fail; then
     echo "❌ Failing build: secrets found at or above threshold ($SEVERITY_THRESHOLD)."

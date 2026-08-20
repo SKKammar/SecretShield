@@ -20,6 +20,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate action.yml
+        uses: reviewdog/action-actionlint@v1
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './'
+
+      - name: Run shfmt
+        run: |
+          sudo apt-get install -y shfmt
+          shfmt -d .
+
       - name: Run SecretShield (self-scan)
         id: scan
         uses: SKKammar/secretshield@v1
@@ -162,6 +175,46 @@ jobs:
           path: /tmp/dirty-test/secretshield-report.json
           if-no-files-found: warn
 
+      # ─── Test 3: Malformed config ──────────────────────────────────────────
+      - name: "Test: Malformed config (expect exit 1)"
+        run: |
+          if docker run --rm \
+            -v /tmp/clean-test:/github/workspace \
+            -e GITHUB_WORKSPACE=/github/workspace \
+            -e SEVERITY_THRESHOLD=INVALID_SEVERITY \
+            secretshield-action:ci; then
+            echo "❌ Malformed config test FAILED — should have returned exit 1"
+            exit 1
+          else
+            echo "✅ Malformed config test passed (correctly exited 1)"
+          fi
+
+      # ─── Test 4: PR event on dirty repo ─────────────────────────────────────
+      - name: "Test: PR event (no auto-remove)"
+        run: |
+          # Even with AUTO_REMOVE=true, a pull_request event should NOT remove files
+          if docker run --rm \
+            -v /tmp/dirty-test:/github/workspace \
+            -e GITHUB_WORKSPACE=/github/workspace \
+            -e GITHUB_EVENT_NAME=pull_request \
+            -e GITHUB_REPOSITORY=test/dirty-repo \
+            -e GITHUB_SHA=def456abc123 \
+            -e GITHUB_REF_NAME=main \
+            -e AUTO_REMOVE=true \
+            -e ALLOW_MUTATION=true \
+            -e FAIL_ON_SECRETS=true \
+            secretshield-action:ci; then
+            echo "❌ PR event test FAILED — should have returned exit 1"
+            exit 1
+          fi
+          
+          # Check that .env wasn't removed
+          if [ ! -f "/tmp/dirty-test/.env" ]; then
+            echo "❌ PR event test FAILED — .env was deleted!"
+            exit 1
+          fi
+          echo "✅ PR event test passed (files preserved, correctly exited 1)"
+
   # ─── Dashboard build check ─────────────────────────────────────────────────
   dashboard-build:
     name: Dashboard — Next.js Build
@@ -177,7 +230,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: dashboard
 
       - name: Build dashboard

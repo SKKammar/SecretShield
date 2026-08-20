@@ -1,9 +1,8 @@
 /**
- * SecretShield Dashboard — GitHub API Client
+ * SecretShield Dashboard — API Client
  *
- * Reads scan reports via GitHub Artifacts REST API.
- * Auth: GitHub PAT with `repo` and `workflow` scopes stored in localStorage.
- * No backend, no database — purely client-side API calls.
+ * Calls the Next.js API routes, which securely proxy requests to GitHub
+ * using a server-side session token.
  */
 
 import type {
@@ -15,55 +14,25 @@ import type {
   TrendPoint,
 } from './types';
 
-const GITHUB_API_BASE = 'https://api.github.com';
-const PAT_STORAGE_KEY = 'secretshield_github_pat';
-const ARTIFACT_NAME   = 'secretshield-report';
-
-// ─── PAT Management ──────────────────────────────────────────────────────────
-
-export function getPat(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(PAT_STORAGE_KEY);
-}
-
-export function setPat(token: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PAT_STORAGE_KEY, token.trim());
-}
-
-export function clearPat(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(PAT_STORAGE_KEY);
-}
-
-export function hasPat(): boolean {
-  return Boolean(getPat());
-}
-
 // ─── HTTP Helper ─────────────────────────────────────────────────────────────
 
-async function githubFetch<T>(
+async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const pat = getPat();
-  if (!pat) throw new GitHubAuthError('No GitHub PAT configured.');
-
-  const res = await fetch(`${GITHUB_API_BASE}${path}`, {
+  const res = await fetch(path, {
     cache: 'no-store',
     ...options,
     headers: {
-      Authorization: `Bearer ${pat}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
       ...options.headers,
     },
   });
 
-  if (res.status === 401) throw new GitHubAuthError('Invalid or expired PAT. Please update your token.');
-  if (res.status === 403) throw new GitHubAuthError('Insufficient PAT scopes. Ensure read:actions is granted.');
+  if (res.status === 401) throw new GitHubAuthError('Session expired. Please log in again.');
+  if (res.status === 403) throw new GitHubAuthError('Insufficient permissions.');
   if (res.status === 404) throw new GitHubNotFoundError(`Resource not found: ${path}`);
-  if (!res.ok) throw new GitHubApiError(`GitHub API error ${res.status}: ${res.statusText}`, res.status);
+  if (!res.ok) throw new GitHubApiError(`API error ${res.status}: ${res.statusText}`, res.status);
 
   if (res.status === 204) return {} as T;
   return res.json() as Promise<T>;
@@ -89,16 +58,12 @@ export class GitHubApiError extends Error {
 export async function searchRepos(query: string): Promise<GitHubRepo[]> {
   if (!query.trim()) return [];
   const encoded = encodeURIComponent(query);
-  const data = await githubFetch<GitHubRepoSearchResponse>(
-    `/search/repositories?q=${encoded}&sort=updated&per_page=10`
-  );
-  return data.items;
+  const data = await apiFetch<GitHubRepoSearchResponse>(`/api/search?q=${encoded}`);
+  return data.items || [];
 }
 
 export async function getUserRepos(): Promise<GitHubRepo[]> {
-  const data = await githubFetch<GitHubRepo[]>(
-    `/user/repos?sort=updated&per_page=30&type=all`
-  );
+  const data = await apiFetch<GitHubRepo[]>(`/api/repos`);
   return data;
 }
 
@@ -110,8 +75,8 @@ export async function listScanArtifacts(
   perPage = 30,
   page = 1,
 ): Promise<GitHubArtifactsResponse> {
-  return githubFetch<GitHubArtifactsResponse>(
-    `/repos/${owner}/${repo}/actions/artifacts?name=${ARTIFACT_NAME}&per_page=${perPage}&page=${page}`
+  return apiFetch<GitHubArtifactsResponse>(
+    `/api/scans/list?owner=${owner}&repo=${repo}&per_page=${perPage}&page=${page}`
   );
 }
 
@@ -121,21 +86,8 @@ export async function fetchScanReport(
   repo: string,
   artifactId: number,
 ): Promise<ScanReport | null> {
-  const pat = getPat();
-  if (!pat) return null;
-
-  // We proxy through our Next.js API route to avoid CORS issues
   try {
-    const res = await fetch(
-      `/api/scans?owner=${owner}&repo=${repo}&artifact_id=${artifactId}`,
-      { 
-        cache: 'no-store',
-        headers: { Authorization: `Bearer ${pat}` }
-      }
-    );
-    if (!res.ok) return null;
-    const data = await res.json() as ScanReport;
-    return data;
+    return await apiFetch<ScanReport>(`/api/scans?owner=${owner}&repo=${repo}&artifact_id=${artifactId}`);
   } catch {
     return null;
   }
@@ -143,12 +95,10 @@ export async function fetchScanReport(
 
 // ─── Manual Actions ──────────────────────────────────────────────────────────
 
-export async function triggerManualScan(owner: string, repo: string): Promise<void> {
-  await githubFetch(`/repos/${owner}/${repo}/dispatches`, {
+export async function triggerManualScan(owner: string, repo: string): Promise<{ request_id: string }> {
+  return apiFetch<{ request_id: string }>(`/api/scans/dispatch`, {
     method: 'POST',
-    body: JSON.stringify({
-      event_type: 'secretshield-scan'
-    })
+    body: JSON.stringify({ owner, repo })
   });
 }
 
@@ -206,9 +156,8 @@ export function buildTrendData(
   return result;
 }
 
-// ─── Validate PAT by calling /user ───────────────────────────────────────────
+// ─── Validate Auth ───────────────────────────────────────────────────────────
 
 export async function validatePat(): Promise<{ login: string; avatar_url: string }> {
-  const user = await githubFetch<{ login: string; avatar_url: string }>('/user');
-  return user;
+  return apiFetch<{ login: string; avatar_url: string }>('/api/auth/me');
 }

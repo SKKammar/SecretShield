@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { triggerManualScan, listScanArtifacts } from '@/lib/github';
+import { triggerManualScan, listScanArtifacts, fetchScanReport } from '@/lib/github';
 import { ScanningWidget } from './ScanningWidget';
 
 export type ScanStatus = 'idle' | 'running' | 'success' | 'error';
@@ -35,28 +35,36 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     setStatus('running');
 
     try {
-      const initialArtifacts = await listScanArtifacts(targetOwner, targetRepo, 1, 1).catch(() => null);
-      const initialId = initialArtifacts?.artifacts[0]?.id;
-
-      await triggerManualScan(targetOwner, targetRepo);
+      const { request_id } = await triggerManualScan(targetOwner, targetRepo);
 
       let attempts = 0;
       const interval = setInterval(async () => {
         attempts++;
         try {
-          const currentArtifacts = await listScanArtifacts(targetOwner, targetRepo, 1, 1);
-          const currentId = currentArtifacts.artifacts[0]?.id;
+          const currentArtifacts = await listScanArtifacts(targetOwner, targetRepo, 10, 1);
+          // Look for any secretshield-report artifact
+          const reports = currentArtifacts.artifacts.filter((a: any) => a.name.startsWith('secretshield-report'));
           
-          if (currentId && currentId !== initialId) {
+          for (const artifact of reports) {
+            // Check if it's new enough and hasn't expired
+            if (artifact.expired) continue;
+            
+            // Try fetching the report to see if the request_id matches
+            const report = await fetchScanReport(targetOwner, targetRepo, artifact.id);
+            if (report && report.request_id === request_id) {
+              clearInterval(interval);
+              setStatus('success');
+              setTimeout(() => {
+                window.location.reload();
+                dismiss();
+              }, 3000);
+              return;
+            }
+          }
+
+          if (attempts >= 24) {
             clearInterval(interval);
-            setStatus('success');
-            setTimeout(() => {
-              window.location.reload();
-              dismiss();
-            }, 5000);
-          } else if (attempts >= 24) {
-            clearInterval(interval);
-            setStatus('success');
+            setStatus('error');
             setTimeout(() => dismiss(), 5000);
           }
         } catch (e) {
