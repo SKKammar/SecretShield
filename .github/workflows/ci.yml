@@ -155,9 +155,9 @@ jobs:
               console.error('❌ Expected findings in dirty repo, got 0');
               process.exit(1);
             }
-            // Redaction check — no finding should have a match longer than 9 chars without ****
+            // Redaction check — no finding should have a match longer than 9 chars without **** or REDACTED
             for (const f of r.findings) {
-              if (f.match && !f.match.includes('****') && f.match.length > 8 && !f.match.startsWith('File:')) {
+              if (f.match && !f.match.includes('****') && !f.match.includes('REDACTED') && f.match.length > 8 && !f.match.startsWith('File:')) {
                 console.error('❌ Unredacted match found in finding:', f.id);
                 process.exit(1);
               }
