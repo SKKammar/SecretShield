@@ -53,7 +53,7 @@ GITLEAKS_IGNORE_ARGS=()
 if [ -n "$IGNORE_PATHS" ]; then
   IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
   for p in "${PATHS[@]}"; do
-    p_trimmed="${p// /}"
+    p_trimmed="$(echo -e "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     if [ -n "$p_trimmed" ]; then
       GITLEAKS_IGNORE_ARGS+=("--ignore-path=$p_trimmed")
     fi
