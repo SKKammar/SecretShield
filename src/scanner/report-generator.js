@@ -58,11 +58,11 @@ function resolveSeverity(ruleId, tags, defaultSeverity) {
  */
 function redactMatch(rawMatch) {
   if (!rawMatch || typeof rawMatch !== 'string' || rawMatch.trim() === '') {
-    return '<redacted>';
+    return '[REDACTED]';
   }
   const stripped = rawMatch.trim();
-  if (stripped.length <= 4) return '****';
-  return stripped.slice(0, 4) + '****';
+  const hash = crypto.createHash('sha256').update(stripped).digest('hex').substring(0, 8);
+  return `[REDACTED:${hash}]`;
 }
 
 /**
@@ -190,39 +190,96 @@ function generateReport(gitleaksPath, fileScannerPath, outputPath) {
   // Gitleaks findings (hardcoded secrets inside source files) must be fixed manually.
   const removableFiles = Array.from(fsc.filesSet);
 
+  // Deduplicate findings
+  const uniqueFindings = [];
+  const seen = new Set();
+  for (const f of allFindings) {
+    const fingerprint = `${f.file}|${f.line}|${f.match}`;
+    if (!seen.has(fingerprint)) {
+      seen.add(fingerprint);
+      uniqueFindings.push(f);
+    }
+  }
+
   // Merge severity counts
   const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
-  for (const f of allFindings) {
+  for (const f of uniqueFindings) {
     if (f.severity in counts) counts[f.severity]++;
     else counts['HIGH']++;
   }
 
   const report = {
+    schema_version: 1,
     scan_id:      crypto.randomUUID(),
+    request_id:   process.env.REQUEST_ID || undefined,
     timestamp:    new Date().toISOString(),
     repo:         process.env.GITHUB_REPOSITORY  || 'unknown/repo',
     commit:       process.env.GITHUB_SHA         || 'unknown',
     branch:       process.env.GITHUB_REF_NAME    || 'unknown',
+    scan_scope:   process.env.SCAN_SCOPE         || 'all',
     triggered_by: (process.env.GITHUB_EVENT_NAME || 'manual') === 'pull_request'
                     ? 'pull_request' : 'push',
     summary: {
-      total_findings: allFindings.length,
+      total_findings: uniqueFindings.length,
       critical:       counts.CRITICAL,
       high:           counts.HIGH,
       medium:         counts.MEDIUM,
       low:            counts.LOW,
-      // Only whole sensitive files (file-scanner hits) — NOT gitleaks source-file findings
       files_removed:  removableFiles,
     },
-    findings: allFindings,
+    findings: uniqueFindings,
   };
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(report, null, 2), 'utf8');
 
+  // Generate unified SARIF
+  generateSarif(uniqueFindings, path.join(path.dirname(outputPath), 'secretshield.sarif'));
+
   console.log(`[SecretShield] Report written to ${outputPath}`);
   console.log(`[SecretShield] Removable files (file-scanner): ${removableFiles.length}`);
-  console.log(`[SecretShield] Total findings: ${allFindings.length} (CRITICAL: ${counts.CRITICAL}, HIGH: ${counts.HIGH}, MEDIUM: ${counts.MEDIUM}, LOW: ${counts.LOW})`);
+  console.log(`[SecretShield] Total findings: ${uniqueFindings.length} (CRITICAL: ${counts.CRITICAL}, HIGH: ${counts.HIGH}, MEDIUM: ${counts.MEDIUM}, LOW: ${counts.LOW})`);
+}
+
+function generateSarif(findings, sarifPath) {
+  const sarif = {
+    version: "2.1.0",
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "SecretShield",
+            informationUri: "https://github.com/SKKammar/SecretShield",
+            rules: findings.map(f => ({
+              id: f.id,
+              shortDescription: { text: f.rule },
+              properties: {
+                "security-severity": f.severity === 'CRITICAL' ? "9.0" : f.severity === 'HIGH' ? "7.0" : f.severity === 'MEDIUM' ? "4.0" : "2.0"
+              }
+            })).filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i)
+          }
+        },
+        results: findings.map(f => ({
+          ruleId: f.id,
+          level: f.severity === 'CRITICAL' || f.severity === 'HIGH' ? "error" : "warning",
+          message: { text: `Secret detected: ${f.rule} ${f.match}` },
+          locations: [
+            {
+              physicalLocation: {
+                artifactLocation: { uri: f.file },
+                region: { startLine: f.line || 1 }
+              }
+            }
+          ],
+          partialFingerprints: {
+            primaryLocationLineHash: crypto.createHash('sha256').update(`${f.file}:${f.line}:${f.id}`).digest('hex')
+          }
+        }))
+      }
+    ]
+  };
+  fs.writeFileSync(sarifPath, JSON.stringify(sarif, null, 2), 'utf8');
 }
 
 // ─── CLI entrypoint ──────────────────────────────────────────────────────────

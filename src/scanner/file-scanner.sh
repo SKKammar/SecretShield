@@ -7,18 +7,18 @@ WORKSPACE="${GITHUB_WORKSPACE:-/github/workspace}"
 IGNORE_PATHS="${IGNORE_PATHS:-}"
 CUSTOM_PATTERNS="${CUSTOM_PATTERNS:-}"
 
-# ─── Build find exclude args from IGNORE_PATHS ───────────────────────────────
-build_find_excludes() {
-  local excludes=("-not" "-path" "*/.git/*" "-not" "-path" "*/node_modules/*")
-  if [ -n "$IGNORE_PATHS" ]; then
-    IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
-    for p in "${PATHS[@]}"; do
-      p_trimmed="${p// /}"
-      excludes+=("-not" "-path" "*/$p_trimmed*")
-    done
-  fi
-  echo "${excludes[@]}"
-}
+# ─── Collect find excludes ────────────────────────────────────────────────────
+EXCLUDES=("-not" "-path" "*/.git/*" "-not" "-path" "*/node_modules/*")
+if [ -n "$IGNORE_PATHS" ]; then
+  IFS=',' read -ra PATHS <<< "$IGNORE_PATHS"
+  for p in "${PATHS[@]}"; do
+    # Trim leading and trailing whitespace safely
+    p_trimmed="$(echo -e "${p}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    if [ -n "$p_trimmed" ]; then
+      EXCLUDES+=("-not" "-path" "*/${p_trimmed}*")
+    fi
+  done
+fi
 
 FINDINGS="[]"
 
@@ -43,20 +43,21 @@ add_finding() {
     --arg severity "$severity" \
     --argjson file "$esc_file" \
     --arg rule     "$rule" \
-    --arg match    "File: ${clean_file:0:4}****" \
+    --arg match    "[REDACTED]" \
     --arg source   "file-scanner" \
     '{id: $id, severity: $severity, file: $file, line: 1, match: $match, rule: $rule, source: $source}')
 
   FINDINGS=$(echo "$FINDINGS" | jq ". += [$finding]")
 }
 
-# ─── Collect find excludes ────────────────────────────────────────────────────
-mapfile -t EXCLUDES < <(build_find_excludes | tr ' ' '\n')
+
 
 # ─── Scan all files in workspace ─────────────────────────────────────────────
 cd "$WORKSPACE"
 
 while IFS= read -r -d '' file; do
+  [ ! -r "$file" ] && continue
+
   basename_lower=$(basename "$file" | tr '[:upper:]' '[:lower:]')
   dirname_part=$(dirname "$file")
 
@@ -118,7 +119,7 @@ while IFS= read -r -d '' file; do
     matched=true
   fi
 
-done < <(find "$WORKSPACE" -type f "${EXCLUDES[@]}" -print0 2>/dev/null)
+done < <(find "$WORKSPACE" -type f ! -type l "${EXCLUDES[@]}" -print0 2>/dev/null)
 
 # ─── Custom pattern scan (content-based regex) ────────────────────────────────
 if [ -n "$CUSTOM_PATTERNS" ]; then
@@ -130,7 +131,7 @@ if [ -n "$CUSTOM_PATTERNS" ]; then
     while IFS= read -r match_file; do
       # Skip already-matched files for this iteration
       add_finding "$match_file" "HIGH" "custom-pattern" "custom-pattern"
-    done < <(grep -rlE "$pattern_trimmed" "$WORKSPACE" \
+    done < <(grep -rlIE "$pattern_trimmed" "$WORKSPACE" \
                --exclude-dir=".git" \
                --exclude-dir="node_modules" \
                --exclude-dir=".next" \

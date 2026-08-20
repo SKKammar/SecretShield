@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  getPat,
-  setPat,
-  clearPat,
   validatePat,
   getUserRepos,
   searchRepos,
@@ -17,11 +14,10 @@ import { EmptyState } from '@/components/EmptyState';
 import { ManualScanButton } from '@/components/ManualScanButton';
 
 export default function OverviewPage() {
-  const [pat, setPatState] = useState<string>('');
-  const [inputPat, setInputPat] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<{ login: string; avatar_url: string } | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,49 +25,27 @@ export default function OverviewPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = getPat();
-    if (stored) {
-      setPatState(stored);
-      autoValidate(stored);
-    }
+    const checkAuth = async () => {
+      try {
+        const u = await validatePat();
+        setUser(u);
+        setIsAuthenticated(true);
+        loadRepos();
+      } catch (err) {
+        setIsAuthenticated(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkAuth();
   }, []);
 
-  const autoValidate = async (token: string) => {
-    try {
-      const u = await validatePat();
-      setUser(u);
-      loadRepos();
-    } catch {
-      clearPat();
-      setPatState('');
-    }
-  };
-
-  const handleSavePat = async () => {
-    if (!inputPat.trim()) return;
-    setIsValidating(true);
-    setAuthError(null);
-    try {
-      setPat(inputPat.trim());
-      setPatState(inputPat.trim());
-      const u = await validatePat();
-      setUser(u);
-      setInputPat('');
-      loadRepos();
-    } catch (err) {
-      clearPat();
-      setPatState('');
-      setAuthError(err instanceof Error ? err.message : 'Authentication failed');
-    } finally {
-      setIsValidating(false);
-    }
+  const handleLogin = () => {
+    window.location.href = '/api/auth/login';
   };
 
   const handleSignOut = () => {
-    clearPat();
-    setPatState('');
-    setUser(null);
-    setRepos([]);
+    window.location.href = '/api/auth/callback?action=logout';
   };
 
   const loadRepos = useCallback(async () => {
@@ -90,7 +64,15 @@ export default function OverviewPage() {
   const handleSearch = useCallback(async (q: string) => {
     setSearchQuery(q);
     if (!q.trim()) {
-      loadRepos();
+      setIsSearching(true);
+      try {
+        const data = await getUserRepos();
+        setRepos(data);
+      } catch (err) {
+        // ignore
+      } finally {
+        setIsSearching(false);
+      }
       return;
     }
     setIsSearching(true);
@@ -109,14 +91,12 @@ export default function OverviewPage() {
     }
   }, [loadRepos]);
 
-  if (!pat) {
-    return <AuthScreen
-      inputPat={inputPat}
-      setInputPat={setInputPat}
-      onSave={handleSavePat}
-      isValidating={isValidating}
-      error={authError}
-    />;
+  if (isCheckingAuth) {
+    return <div className="p-8 font-mono text-sm text-muted">Checking session...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen onLogin={handleLogin} error={authError} />;
   }
 
   return (
@@ -194,16 +174,10 @@ export default function OverviewPage() {
 // ─── Auth Screen ────────────────────────────────────────────────────────────
 
 function AuthScreen({
-  inputPat,
-  setInputPat,
-  onSave,
-  isValidating,
+  onLogin,
   error,
 }: {
-  inputPat: string;
-  setInputPat: (v: string) => void;
-  onSave: () => void;
-  isValidating: boolean;
+  onLogin: () => void;
   error: string | null;
 }) {
   return (
@@ -221,22 +195,6 @@ function AuthScreen({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label htmlFor="pat-input" className="mb-2 block font-mono text-xs font-bold text-accent uppercase tracking-widest">
-            ▸ GITHUB_TOKEN
-          </label>
-          <input
-            id="pat-input"
-            type="password"
-            placeholder="ghp_"
-            value={inputPat}
-            onChange={(e) => setInputPat(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSave()}
-            className="terminal-input font-mono"
-            autoComplete="off"
-          />
-        </div>
-
         {error && (
           <p className="font-mono text-xs text-accent">
             [ERROR] {error}
@@ -245,17 +203,15 @@ function AuthScreen({
 
         <div>
           <button
-            id="connect-btn"
-            onClick={onSave}
-            disabled={isValidating || !inputPat.trim()}
+            onClick={onLogin}
             className="terminal-button"
           >
-            {isValidating ? '→ CONNECTING...' : '→ CONNECT'}
+            → LOGIN_WITH_GITHUB
           </button>
         </div>
         
         <p className="font-mono text-[11px] text-muted lowercase">
-          stored in localStorage · never leaves your browser
+          secure server-side session · no tokens stored in browser
         </p>
 
         <TokenGuide />
