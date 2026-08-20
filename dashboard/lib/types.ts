@@ -27,11 +27,14 @@ export interface ScanSummary {
 }
 
 export interface ScanReport {
+  schema_version?: number;
   scan_id: string;
+  request_id?: string;
   timestamp: string;
   repo: string;
   commit: string;
   branch: string;
+  scan_scope?: string;
   triggered_by: TriggerType;
   summary: ScanSummary;
   findings: Finding[];
