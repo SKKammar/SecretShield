@@ -91,7 +91,8 @@ GITHUB_TOKEN=your_pat_token node add-workflow-to-all.js
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `token` | ✅ | `${{ github.token }}` | GitHub token for PR comments and artifact upload |
-| `auto_remove` | ❌ | `"true"` | Auto-delete sensitive files on direct push and commit |
+| `auto_remove` | ❌ | `"true"` | Auto-delete sensitive files on direct push and commit (requires `allow_mutation: "true"`) |
+| `allow_mutation` | ❌ | `"false"` | Explicitly allow mutating the repository on push (safety flag for `auto_remove`) |
 | `fail_on_secrets` | ❌ | `"true"` | Fail the job if secrets at or above `severity_threshold` are found |
 | `custom_patterns` | ❌ | `""` | Comma-separated extra regex patterns to scan file contents for |
 | `ignore_paths` | ❌ | `""` | Comma-separated paths to skip entirely (e.g. `tests/,docs/`) |
@@ -149,7 +150,7 @@ flowchart TD
 
     F -- Yes --> H{Event type?}
 
-    H -- push --> I[🗑️ auto_remove=true?\ngit rm files\nUpdate .gitignore\n⚠️ Commit + push]
+    H -- push --> I[🗑️ auto_remove=true\n& allow_mutation=true?\ngit rm files\nUpdate .gitignore\n⚠️ Commit + push]
     H -- pull_request --> J[💬 Post PR comment\nFindings table\n4-step How to Fix]
 
     I --> K{fail_on_secrets\n+ severity_threshold\nmet?}
@@ -220,7 +221,7 @@ Extend SecretShield's detection with your own regex patterns via the `custom_pat
 
 When SecretShield's `auto_remove` feature removes a file and commits the deletion, the secret still exists in all previous commits. Anyone with repository access can still check out an older commit and read the file.
 
-> **`auto_remove` scope**: Only **whole sensitive files** detected by the file-pattern scanner (`.env`, `.pem`, `service-account.json`, etc.) are auto-deleted. Secrets embedded inside regular source files (e.g. a hardcoded API key in `config.js`) are **flagged but never auto-deleted** — removing a source file would break your codebase. You must edit the file to remove the secret value.
+> **`auto_remove` scope**: Only **whole sensitive files** detected by the file-pattern scanner (`.env`, `.pem`, `service-account.json`, etc.) are auto-deleted. This requires **both** `auto_remove: "true"` and `allow_mutation: "true"` to be set. Secrets embedded inside regular source files (e.g. a hardcoded API key in `config.js`) are **flagged but never auto-deleted** — removing a source file would break your codebase. You must edit the file to remove the secret value.
 
 **After any secret detection, you MUST:**
 
