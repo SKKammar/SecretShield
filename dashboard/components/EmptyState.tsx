@@ -17,11 +17,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: SKKammar/secretshield@v1.1.0
+      - uses: SKKammar/secretshield@main
         with:
           token: \${{ secrets.GITHUB_TOKEN }}
-          fail_on_secrets: "false"
-          auto_remove: "false"
+          severity_threshold: "HIGH"
+          auto_remove: "true"
+          allow_mutation: "true"
+          fail_on_secrets: "true"
       - name: Upload scan report
         if: always()
         uses: actions/upload-artifact@v4

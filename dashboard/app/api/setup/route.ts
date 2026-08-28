@@ -25,7 +25,7 @@ jobs:
           persist-credentials: true
 
       - name: Run SecretShield
-        uses: SKKammar/secretshield@v1.1.0
+        uses: SKKammar/secretshield@main
         with:
           token: \${{ secrets.GITHUB_TOKEN }}
           severity_threshold: "HIGH"
