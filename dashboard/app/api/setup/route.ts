@@ -7,9 +7,7 @@ const WORKFLOW_CONTENT = `name: SecretShield Scan
 
 on:
   push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
   repository_dispatch:
     types: [secretshield-scan]
 
@@ -32,6 +30,7 @@ jobs:
           token: \${{ secrets.GITHUB_TOKEN }}
           severity_threshold: "HIGH"
           auto_remove: "true"
+          allow_mutation: "true"
           fail_on_secrets: "true"
 
       - name: Upload scan report

@@ -38,7 +38,9 @@ export function ScanProvider({ children }: { children: ReactNode }) {
       const { request_id } = await triggerManualScan(targetOwner, targetRepo);
 
       let attempts = 0;
-      const interval = setInterval(async () => {
+      let timeoutId: NodeJS.Timeout;
+
+      const checkStatus = async () => {
         attempts++;
         try {
           const currentArtifacts = await listScanArtifacts(targetOwner, targetRepo, 10, 1);
@@ -52,7 +54,6 @@ export function ScanProvider({ children }: { children: ReactNode }) {
             // Try fetching the report to see if the request_id matches
             const report = await fetchScanReport(targetOwner, targetRepo, artifact.id);
             if (report && report.request_id === request_id) {
-              clearInterval(interval);
               setStatus('success');
               setTimeout(() => {
                 window.location.reload();
@@ -63,14 +64,19 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           }
 
           if (attempts >= 24) {
-            clearInterval(interval);
             setStatus('error');
             setTimeout(() => dismiss(), 5000);
+            return;
           }
         } catch (e) {
           // ignore
         }
-      }, 5000);
+        
+        timeoutId = setTimeout(checkStatus, 5000);
+      };
+
+      // Start the polling
+      timeoutId = setTimeout(checkStatus, 5000);
     } catch (err: any) {
       console.error(err);
       setStatus('error');

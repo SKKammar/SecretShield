@@ -27,14 +27,16 @@ export default function RepoPage() {
   const [page, setPage]           = useState(1);
   const [hasMore, setHasMore]     = useState(false);
 
-  // Aggregate summary for current page
+  // Get summary from the latest scan (first row)
+  const latestReport = rows[0]?.report;
+  
   const aggregateSummary = {
-    total_findings: rows.reduce((s, r) => s + (r.report?.summary.total_findings ?? 0), 0),
-    critical:       rows.reduce((s, r) => s + (r.report?.summary.critical ?? 0), 0),
-    high:           rows.reduce((s, r) => s + (r.report?.summary.high ?? 0), 0),
-    medium:         rows.reduce((s, r) => s + (r.report?.summary.medium ?? 0), 0),
-    low:            rows.reduce((s, r) => s + (r.report?.summary.low ?? 0), 0),
-    files_removed:  [],
+    total_findings: latestReport?.summary.total_findings ?? 0,
+    critical:       latestReport?.summary.critical ?? 0,
+    high:           latestReport?.summary.high ?? 0,
+    medium:         latestReport?.summary.medium ?? 0,
+    low:            latestReport?.summary.low ?? 0,
+    files_removed:  latestReport?.summary.files_removed ?? [],
   };
 
   const loadScans = useCallback(async (pageNum: number) => {
