@@ -31,7 +31,7 @@ add_finding() {
 
   # Strip workspace prefix and leading ./ for relative paths
   local clean_file
-  clean_file="${file#$WORKSPACE/}"
+  clean_file="${file#"$WORKSPACE"/}"
   clean_file="${clean_file#./}"
 
   # Escape for JSON
