@@ -29,9 +29,10 @@ add_finding() {
   local rule="$3"
   local id="$4"
 
-  # Strip leading ./ for cleaner paths
+  # Strip workspace prefix and leading ./ for relative paths
   local clean_file
-  clean_file="${file#./}"
+  clean_file="${file#$WORKSPACE/}"
+  clean_file="${clean_file#./}"
 
   # Escape for JSON
   local esc_file
