@@ -59,6 +59,17 @@ jobs:
           path: secretshield-report.json
 ```
 
+### 🤖 Automated Multi-Repo Setup
+
+If you want to automatically add the SecretShield workflow to **all** of your repositories at once, you can run our provided setup script:
+
+**Using Node.js:**
+```bash
+curl -sO https://raw.githubusercontent.com/SKKammar/secretshield/main/scripts/add-workflow-to-all.js
+GITHUB_TOKEN=your_pat_token node add-workflow-to-all.js
+```
+*(Requires a GitHub Personal Access Token with `repo` permissions)*
+
 ---
 
 ## 🔍 What It Does

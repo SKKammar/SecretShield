@@ -113,7 +113,7 @@ done < <(find "$WORKSPACE" -type f ! -type l "${EXCLUDES[@]}" -print0 2>/dev/nul
 if [ -n "$CUSTOM_PATTERNS" ]; then
   IFS=',' read -ra PATTERNS <<<"$CUSTOM_PATTERNS"
   for pattern in "${PATTERNS[@]}"; do
-    pattern_trimmed="${pattern// /}"
+    pattern_trimmed="$(printf '%s' "${pattern}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$pattern_trimmed" ] && continue
 
     while IFS= read -r match_file; do

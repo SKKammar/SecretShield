@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(`${GITHUB_API_BASE}/user/repos?sort=updated&per_page=30&type=all`, {
+    const res = await fetch(`${GITHUB_API_BASE}/user/repos?sort=updated&per_page=100&type=all`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',

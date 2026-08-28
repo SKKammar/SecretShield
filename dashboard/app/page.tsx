@@ -9,9 +9,9 @@ import {
   GitHubAuthError,
 } from '@/lib/github';
 import type { GitHubRepo } from '@/lib/types';
-import { TokenGuide } from '@/components/TokenGuide';
 import { EmptyState } from '@/components/EmptyState';
 import { ManualScanButton } from '@/components/ManualScanButton';
+import { SetupAllButton } from '@/components/SetupAllButton';
 
 export default function OverviewPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -105,7 +105,7 @@ export default function OverviewPage() {
       <div className="flex items-end justify-between border-b border-border pb-6">
         <div>
           <h1 className="font-mono text-2xl font-bold tracking-tight text-primary">
-            REPOSITORIES
+            REPOSITORIES {repos.length > 0 && `(${repos.length})`}
           </h1>
           <p className="mt-2 font-mono text-xs text-muted uppercase tracking-widest">
             {user && (
@@ -115,12 +115,15 @@ export default function OverviewPage() {
             )}
           </p>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="font-mono text-xs text-muted hover:text-accent transition-colors uppercase tracking-widest"
-        >
-          [ SIGN_OUT ]
-        </button>
+        <div className="flex items-center gap-6">
+          <SetupAllButton repos={repos} />
+          <button
+            onClick={handleSignOut}
+            className="font-mono text-xs text-muted hover:text-accent transition-colors uppercase tracking-widest"
+          >
+            [ SIGN_OUT ]
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -213,8 +216,6 @@ function AuthScreen({
         <p className="font-mono text-[11px] text-muted lowercase">
           secure server-side session · no tokens stored in browser
         </p>
-
-        <TokenGuide />
       </div>
     </div>
   );
