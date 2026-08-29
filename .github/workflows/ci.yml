@@ -41,7 +41,7 @@ jobs:
           severity_threshold: "HIGH"
           auto_remove: "false"
           fail_on_secrets: "true"
-          ignore_paths: "tests/fixtures/dirty-repo/,.env.example"
+          ignore_paths: "tests/fixtures/dirty-repo/"
           sarif_upload: "true"
 
       - name: Upload scan report

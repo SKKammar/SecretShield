@@ -67,7 +67,9 @@ while IFS= read -r -d '' file; do
 
   # ── .env and .env.* variants ──────────────────────────────────────────────
   if [[ "$basename_lower" == ".env" || "$basename_lower" == .env.* ]]; then
-    add_finding "$file" "HIGH" "env-file-detected" "env-file-detected"
+    if [[ "$basename_lower" != ".env.example" && "$basename_lower" != ".env.template" && "$basename_lower" != ".env.sample" ]]; then
+      add_finding "$file" "HIGH" "env-file-detected" "env-file-detected"
+    fi
   fi
 
   # ── Private key files ─────────────────────────────────────────────────────
