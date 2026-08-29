@@ -63,7 +63,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          if (attempts >= 24) {
+          if (attempts >= 60) {
             setStatus('error');
             setTimeout(() => dismiss(), 5000);
             return;
