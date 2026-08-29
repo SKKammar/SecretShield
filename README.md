@@ -35,23 +35,23 @@ flowchart TD
     
     E[📊 Report Generator\nMerges results into secretshield-report.json\nRedacts actual secrets] --> F
     
-    F{Are Secrets\nFound?}
+    F{"Are Secrets\nFound?"}
     
-    F -- No --> G([✅ Clean - Exit 0])
+    F -- No --> G(["✅ Clean - Exit 0"])
     
-    F -- Yes --> H{Event Type?}
+    F -- Yes --> H{"Event Type?"}
     
-    H -- pull_request --> J[💬 Post/Update PR Comment\nProvides remediation steps]
-    H -- push --> I{auto_remove=true\nAND\nallow_mutation=true?}
+    H -- pull_request --> J["💬 Post/Update PR Comment\nProvides remediation steps"]
+    H -- push --> I{"auto_remove=true\nAND\nallow_mutation=true?"}
     
-    I -- Yes --> I1[🗑️ Delete offending files\nAdd to .gitignore\nPush chore commit]
-    I -- No --> I2[⚠️ Skip removal]
+    I -- Yes --> I1["🗑️ Delete offending files\nAdd to .gitignore\nPush chore commit"]
+    I -- No --> I2["⚠️ Skip removal"]
     
     I1 --> K
     I2 --> K
     J --> K
     
-    K{Threshold Met?\n(e.g., HIGH/CRITICAL)}
+    K{"Threshold Met?\n(e.g., HIGH/CRITICAL)"}
     K -- Yes --> M([❌ Fail Build - Exit 1])
     K -- No --> L([✅ Pass Build - Exit 0])
 ```
