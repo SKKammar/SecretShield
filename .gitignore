@@ -1,37 +1,36 @@
+
 # SecretShield .gitignore
-
-# ─── Node / Next.js ──────────────────────────────────────────────────────────
-node_modules/
-.next/
-out/
-dist/
-build/
-*.tsbuildinfo
-.npm
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# ─── SecretShield scan artifacts ─────────────────────────────────────────────
-secretshield-report.json
-/tmp/secretshield/
-
-# ─── OS / Editor ─────────────────────────────────────────────────────────────
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.iml
-*.swp
-*.swo
-
-# ─── Vercel ──────────────────────────────────────────────────────────────────
-.vercel
-
 # ─── Logs ────────────────────────────────────────────────────────────────────
+# ─── Node / Next.js ──────────────────────────────────────────────────────────
+# ─── OS / Editor ─────────────────────────────────────────────────────────────
+# ─── SecretShield scan artifacts ─────────────────────────────────────────────
+# ─── Vercel ──────────────────────────────────────────────────────────────────
+*.iml
 *.log
+*.swo
+*.swp
+*.tsbuildinfo
+.DS_Store
+.env.development.local
+.env.local
+.env.production.local
+.env.test.local
+.idea/
+.next/
+.npm
+.vercel
+.vscode/
+/tmp/secretshield/
+Thumbs.db
+build/
+dist/
+node_modules/
 npm-debug.log*
+out/
+pnpm-debug.log*
+secretshield-report.json
+tests/fixtures/dirty-repo/.env
+tests/fixtures/dirty-repo/secrets.json
+tests/fixtures/dirty-repo/service-account.json
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
