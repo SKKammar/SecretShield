@@ -65,14 +65,24 @@ export async function POST(request: NextRequest) {
     // Check if the file exists
     const checkRes = await fetch(`${GITHUB_API_BASE}${path}`, { headers });
     let sha = null;
+    let existingContent = null;
     
     if (checkRes.ok) {
       const fileData = await checkRes.json();
       sha = fileData.sha;
+      if (fileData.content) {
+        existingContent = Buffer.from(fileData.content, 'base64').toString('utf8');
+      }
     } else if (checkRes.status !== 404) {
       const errorData = await checkRes.json().catch(() => ({}));
       console.error(`Error checking file for ${owner}/${repo}:`, errorData);
       return NextResponse.json({ error: 'GitHub API error checking file' }, { status: checkRes.status });
+    }
+
+    // Skip if the file is already up to date
+    const normalize = (str: string) => str.replace(/\r\n/g, '\n').trim();
+    if (existingContent && normalize(existingContent) === normalize(WORKFLOW_CONTENT)) {
+      return NextResponse.json({ success: true, updated: false, skipped: true });
     }
 
     // Create or update the file

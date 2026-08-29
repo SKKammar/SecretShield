@@ -21,6 +21,7 @@ export function SetupAllButton({ repos }: { repos: GitHubRepo[] }) {
     setProgress({ current: 0, total: repos.length });
 
     let successCount = 0;
+    let skippedCount = 0;
     for (let i = 0; i < repos.length; i++) {
       const repo = repos[i];
       const [owner, repoName] = repo.full_name.split('/');
@@ -36,6 +37,10 @@ export function SetupAllButton({ repos }: { repos: GitHubRepo[] }) {
 
         if (res.ok) {
           successCount++;
+          const data = await res.json();
+          if (data.skipped) {
+            skippedCount++;
+          }
         } else {
           console.error(`Failed to setup ${repo.full_name}:`, res.statusText);
         }
@@ -50,9 +55,9 @@ export function SetupAllButton({ repos }: { repos: GitHubRepo[] }) {
     setIsSettingUp(false);
     
     if (successCount === repos.length) {
-      alert('Successfully setup all repositories!');
+      alert(`Completed! Updated ${successCount - skippedCount} repos. ${skippedCount} repos were already up to date and skipped.`);
     } else {
-      setError(`Completed. Setup ${successCount} out of ${repos.length} repositories.`);
+      setError(`Completed. Handled ${successCount} out of ${repos.length} repositories (${skippedCount} skipped).`);
     }
   };
 
