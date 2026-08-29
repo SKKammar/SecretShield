@@ -60,6 +60,9 @@ export function SetupAllButton({ repos }: { repos: GitHubRepo[] }) {
 
   return (
     <div className="flex flex-col items-end">
+      <span className="text-[10px] text-muted mb-2 font-mono text-right max-w-xs">
+        * Deploys the SecretShield workflow (.github/workflows/secretshield.yml) to all listed repositories to automate secret scanning.
+      </span>
       <button
         onClick={handleSetupAll}
         disabled={isSettingUp}
