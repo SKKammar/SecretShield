@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { fetchScanReport, validatePat } from '@/lib/github';
+import { fetchScanReport, getUser } from '@/lib/github';
 import type { ScanReport, Finding } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ export default function ScanDetailPage() {
   const [filter, setFilter]     = useState<string>('ALL');
 
   useEffect(() => {
-    validatePat().catch(() => router.push('/'));
+    getUser().catch(() => router.push('/'));
     if (!owner || !repo || !artifactId) { setLoading(false); return; }
 
     fetchScanReport(owner, repo, artifactId)

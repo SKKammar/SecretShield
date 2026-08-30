@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  validatePat,
+  getUser,
   getUserRepos,
   searchRepos,
   GitHubAuthError,
@@ -27,7 +27,7 @@ export default function OverviewPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const u = await validatePat();
+        const u = await getUser();
         setUser(u);
         setIsAuthenticated(true);
         loadRepos();

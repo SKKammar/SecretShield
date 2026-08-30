@@ -5,8 +5,8 @@
 - Verify: run `act push` and confirm exit 1
 
 ## Adding a Sensitive File Pattern
-- Where: src/scanner/file-scanner.sh SENSITIVE_PATTERNS array
-- Format: bash regex string e.g. "secrets\.ya?ml$"
+- Where: src/scanner/file-scanner.sh
+- Format: Add an `if` block checking `$basename_lower` and call `add_finding`
 - Test: add a file matching the pattern to tests/fixtures/dirty-repo/
 
 ## Running Tests Locally

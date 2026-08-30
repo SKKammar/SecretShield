@@ -158,6 +158,6 @@ export function buildTrendData(
 
 // ─── Validate Auth ───────────────────────────────────────────────────────────
 
-export async function validatePat(): Promise<{ login: string; avatar_url: string }> {
+export async function getUser(): Promise<{ login: string; avatar_url: string }> {
   return apiFetch<{ login: string; avatar_url: string }>('/api/auth/me');
 }

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ScanHistoryTable } from '@/components/ScanHistoryTable';
 import { TrendChart, SeverityPieChart } from '@/components/TrendChart';
 import { ManualScanButton } from '@/components/ManualScanButton';
-import { listScanArtifacts, fetchScanReport, buildTrendData, validatePat } from '@/lib/github';
+import { listScanArtifacts, fetchScanReport, buildTrendData, getUser } from '@/lib/github';
 import type { GitHubArtifact, ScanReport, TrendPoint } from '@/lib/types';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -41,7 +41,7 @@ export default function RepoPage() {
 
   const loadScans = useCallback(async (pageNum: number) => {
     try {
-      await validatePat();
+      await getUser();
     } catch {
       router.push('/');
       return;
