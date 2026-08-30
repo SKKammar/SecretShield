@@ -89,7 +89,7 @@ on:
 permissions:
   contents: write      # Required for auto-remove on push
   pull-requests: write # Required to post PR comments
-  security-events: write # Required for SARIF upload (if sarif_upload: true)
+  security-events: write # Required for SARIF upload
 
 jobs:
   scan:
@@ -131,7 +131,6 @@ jobs:
 | `custom_patterns` | ❌ | `""` | Comma-separated extra regex patterns to scan file contents for |
 | `ignore_paths` | ❌ | `""` | Comma-separated paths to skip entirely (e.g. `tests/,docs/`) |
 | `severity_threshold` | ❌ | `"HIGH"` | Minimum severity to trigger failure: `LOW` \| `MEDIUM` \| `HIGH` \| `CRITICAL` |
-| `sarif_upload` | ❌ | `"false"` | Upload findings to GitHub Code Scanning Alerts |
 
 ---
 

@@ -14,7 +14,6 @@ git config user.email "secretshield[bot]@users.noreply.github.com"
 # ─── Defaults ────────────────────────────────────────────────────────────────
 AUTO_REMOVE="${AUTO_REMOVE:-false}"
 FAIL_ON_SECRETS="${FAIL_ON_SECRETS:-true}"
-SARIF_UPLOAD="${SARIF_UPLOAD:-false}"
 COMMENT_ON_PR="${COMMENT_ON_PR:-true}"
 ALLOW_MUTATION="${ALLOW_MUTATION:-false}"
 CUSTOM_PATTERNS="${CUSTOM_PATTERNS:-}"
@@ -28,7 +27,7 @@ SCAN_SCOPE="${SCAN_SCOPE:-all}"
 
 # ─── Validation ──────────────────────────────────────────────────────────────
 # Validate boolean inputs
-for var in AUTO_REMOVE FAIL_ON_SECRETS SARIF_UPLOAD COMMENT_ON_PR ALLOW_MUTATION; do
+for var in AUTO_REMOVE FAIL_ON_SECRETS COMMENT_ON_PR ALLOW_MUTATION; do
   val="${!var}"
   val_lower=$(echo "$val" | tr '[:upper:]' '[:lower:]')
   if [[ "$val_lower" != "true" && "$val_lower" != "false" ]]; then

@@ -29,6 +29,7 @@ npm-debug.log*
 out/
 pnpm-debug.log*
 secretshield-report.json
+secretshield.sarif
 tests/fixtures/dirty-repo/.env
 tests/fixtures/dirty-repo/secrets.json
 tests/fixtures/dirty-repo/service-account.json
