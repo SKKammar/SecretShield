@@ -62,7 +62,7 @@ Upon triggering, the action runs two distinct scanners simultaneously:
 - **File-Pattern Scanner**: Fast file-tree traversal identifying structural files that should never be committed (like `.env`, `credentials.json`, `*.pem`), regardless of their contents.
 
 ### 2. Report Unification & Redaction
-The outputs of both scanners are piped into `report-generator.js`. This script standardizes the findings, assigns severity levels (LOW, MEDIUM, HIGH, CRITICAL), **redacts the actual matched secrets** (leaving only the first 4 characters and `****` for safety), and outputs a unified `secretshield-report.json`.
+The outputs of both scanners are piped into `report-generator.js`. This script standardizes the findings, assigns severity levels (LOW, MEDIUM, HIGH, CRITICAL), **redacts the actual matched secrets** (replacing them with `[REDACTED:<hash>]` for safety), and outputs a unified `secretshield-report.json`.
 
 ### 3. Action Phase (Push vs. PR)
 - **Pull Requests**: SecretShield posts a PR comment detailing the leaked secrets and provides a 4-step remediation guide. It blocks the PR from merging if the severity meets the threshold.
@@ -89,6 +89,7 @@ on:
 permissions:
   contents: write      # Required for auto-remove on push
   pull-requests: write # Required to post PR comments
+  security-events: write # Required for SARIF upload (if sarif_upload: true)
 
 jobs:
   scan:
@@ -124,7 +125,7 @@ jobs:
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `token` | ✅ | `${{ github.token }}` | GitHub token for PR comments and artifact upload |
-| `auto_remove` | ❌ | `"true"` | Auto-delete sensitive files on direct push and commit (requires `allow_mutation: "true"`) |
+| `auto_remove` | ❌ | `"false"` | Auto-delete sensitive files on direct push and commit (requires `allow_mutation: "true"`) |
 | `allow_mutation` | ❌ | `"false"` | Explicitly allow mutating the repository on push (safety flag for `auto_remove`) |
 | `fail_on_secrets` | ❌ | `"true"` | Fail the job if secrets at or above `severity_threshold` are found |
 | `custom_patterns` | ❌ | `""` | Comma-separated extra regex patterns to scan file contents for |
@@ -167,7 +168,7 @@ When SecretShield's `auto_remove` feature deletes a file and commits the deletio
 SecretShield includes a Next.js 15 dashboard built with a sleek, zero-fluff terminal aesthetic. It visualizes the security status of your repositories without requiring a database or backend server. 
 
 **Features:**
-- **Zero Configuration**: Just log in with a GitHub Personal Access Token (requires `read:actions`).
+- **Zero Configuration**: Just log in with GitHub OAuth (requires `repo` and `workflow` scopes).
 - **Real-Time Data**: Queries the GitHub API dynamically to unpack ZIP artifacts.
 - **Severity Breakdowns**: Instantly see CRITICAL, HIGH, MEDIUM, and LOW issues across all repositories.
 

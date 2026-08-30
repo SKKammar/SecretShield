@@ -10,6 +10,11 @@ on:
   repository_dispatch:
     types: [secretshield-scan]
 
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+
 jobs:
   scan:
     runs-on: ubuntu-latest

@@ -14,6 +14,7 @@ on:
 permissions:
   contents: write      # required for auto-remove on push
   pull-requests: write # required to post PR comments
+  security-events: write # required for SARIF upload (if sarif_upload: true)
 
 jobs:
   scan:
